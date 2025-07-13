@@ -70,7 +70,7 @@ Follow these steps to set up and run this project locally.
 Clone the repository and install the dependencies for both sub-projects.
 
 ```bash
-git clone <YOUR_GITHUB_REPO_URL>
+git clone git@github.com:jecdesarrollos/SimpleSwapDApp.git
 cd SimpleSwapDApp/
 
 # Install Hardhat dependencies
