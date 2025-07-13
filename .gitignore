@@ -1,0 +1,21 @@
+# hardhat
+hardhat/.env
+hardhat/.env_localhost
+
+hardhat/artifacts
+hardhat/cache
+hardhat/node_modules/
+
+# frontend
+frontend/.env
+frontend/.env_localhost
+
+frontend/.vite/
+frontend/.history/
+frontend/.next/
+
+frontend/build/
+frontend/dist/
+frontend/node_modules/
+frontend/out/
+

@@ -1,0 +1,182 @@
+/* src/App.css */
+
+:root {
+  /* Define una variable para el tamaño de fuente base, puedes ajustarla */
+  --base-font-size: 16px; 
+}
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  /* Establece el tamaño de fuente base para el documento */
+  font-size: var(--base-font-size); 
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+  /* Ajusta el tamaño de fuente para un texto secundario */
+  font-size: 0.9rem; 
+}
+
+.App {
+  text-align: center;
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Ajusta el tamaño de fuente general de la aplicación */
+  font-size: calc(0.6rem + 1vmin); 
+  color: white;
+}
+
+.App-header {
+  margin-bottom: 10px;
+  padding:5px;
+  /* Podrías considerar un tamaño de fuente más grande para encabezados */
+  font-size: 1.4rem; 
+}
+
+.dapp-container {
+  background-color: #282c34;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 600px;
+  margin-top: 20px;
+}
+
+button {
+  background-color: #61dafb;
+  color: #282c34;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  /* Ajusta el tamaño de fuente de los botones */
+  font-size: 1rem; 
+  margin: 10px 5px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #21a1f1;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+input[type="number"],
+input[type="text"],
+select {
+  padding: 8px;
+  margin: 5px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background-color: #444;
+  color: white;
+  /* Ajusta el tamaño de fuente de los inputs y selects */
+  font-size: 1rem; 
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
+  outline: none;
+  border-color: #61dafb;
+}
+
+hr {
+  border: 0;
+  height: 1px;
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(97, 218, 251, 0.75), rgba(0, 0, 0, 0));
+  margin: 20px 0;
+}
+
+.liquidity-section,
+.swap-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background-color: #333;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.input-group input,
+.input-group select {
+  flex-grow: 1;
+  margin: 0 5px;
+}
+
+.swap-arrow {
+  /* Un tamaño de fuente más grande para el ícono de la flecha */
+  font-size: 2.2rem; 
+  margin: 10px 0;
+  color: #61dafb;
+}
+
+/* Mensajes de estado */
+p[style*="color: red"] {
+  background-color: #ffe0e0;
+  color: #cc0000 !important;
+  padding: 8px;
+  border-radius: 5px;
+  margin-top: 10px;
+  /* Ajusta el tamaño de fuente para los mensajes de error/éxito */
+  font-size: 0.95rem; 
+}
+
+p[style*="color: green"] {
+  background-color: #e0ffe0;
+  color: #008000 !important;
+  padding: 8px;
+  border-radius: 5px;
+  margin-top: 10px;
+  /* Ajusta el tamaño de fuente para los mensajes de error/éxito */
+  font-size: 0.95rem; 
+}
