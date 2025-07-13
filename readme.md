@@ -23,7 +23,7 @@
 
   * **Smart Contracts (`hardhat/`):**
       * **Language:** Solidity (`^0.8.27`).
-      * **Environment:** Hardhat for compilation, deployment, and testing.
+      * **Environment:** Remix - Hardhat for edition, compilation, deployment, and testing.
       * **Libraries:** Ethers.js, Chai, Mocha, and OpenZeppelin Contracts.
   * **Frontend (`frontend/`):**
       * **Library:** React.
