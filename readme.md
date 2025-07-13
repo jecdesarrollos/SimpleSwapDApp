@@ -4,7 +4,7 @@
 
   * **Live Application (Sepolia):** `https://tp4-frontend.vercel.app/`
   * **Test Coverage Report:** `https://coverage-report-zeta.vercel.app/`
-  * **Video: `https://youtu.be/btd9hjmlMhU`
+  * **Video:** `https://youtu.be/btd9hjmlMhU`
 ### Project Overview
 
 **Practical Work Module 4: Front-End Creation and Testing for SimpleSwap**, integrating a React-based interface with the `SimpleSwap` contract to handle wallet connections (MetaMask) and execute the DApp's core operations.
