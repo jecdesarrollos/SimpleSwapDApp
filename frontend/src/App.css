@@ -180,3 +180,24 @@ p[style*="color: green"] {
   /* Ajusta el tamaño de fuente para los mensajes de error/éxito */
   font-size: 0.95rem; 
 }
+
+/* Para alinear el botón y el texto en la misma línea */
+.balance-line {
+  display: flex;
+  align-items: center; /* Centra verticalmente el botón con el texto */
+  gap: 15px; /* Añade un espacio entre el botón y el texto */
+  margin-bottom: 10px; /* Espacio debajo de cada línea */
+}
+
+/* Para hacer los botones de claim más pequeños */
+.claim-button {
+  padding: 5px 10px; /* Reduce el relleno del botón */
+  font-size: 0.8em;  /* Reduce el tamaño de la fuente */
+  margin: 0;         /* Elimina márgenes extra */
+}
+
+/* Para reducir el espacio entre secciones */
+.section {
+  margin-top: 15px; /* Reduce el margen superior de cada sección */
+  margin-bottom: 15px;
+}

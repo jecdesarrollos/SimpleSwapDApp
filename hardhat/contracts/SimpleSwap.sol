@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./ISimpleSwap.sol";
 
 using Math for uint256;
+
 /// @title SimpleSwap
 /// @author Jorge Enrique Cabrera
 /// @notice A self-contained Uniswap V2-style Automated Market Maker contract.
@@ -15,25 +16,23 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     using SafeERC20 for IERC20;
 
     // =============================================================
-    //                      STATE & CONSTANTS
+    //                          STATE & CONSTANTS
     // =============================================================
 
-    /// @notice The minimum amount of liquidity burned upon pool creation.
-    /// @dev This protects against initial liquidity provider price manipulation attacks.
+    /// @notice The minimum amount of liquidity burned upon pool creation to protect against price manipulation.
     uint256 public constant MINIMUM_LIQUIDITY = 1e3;
 
-    /// @notice Mapping from a sorted token pair to their reserves.
-    /// @dev Access is always via `reserves[token0][token1]` where token0 is the lower address.
-    mapping(address => mapping(address => PairReserves)) public reserves;
-
-    /// @notice Struct to hold the reserves for a token pair.
+    /// @notice Struct to hold the reserves for a token pair, ordered by token address.
     struct PairReserves {
-        uint256 reserveA; // Corresponds to the reserve of the token with the lower address (_token0)
-        uint256 reserveB; // Corresponds to the reserve of the token with the higher address (_token1)
+        uint256 reserveA; // Reserve of the token with the lower address (_token0)
+        uint256 reserveB; // Reserve of the token with the higher address (_token1)
     }
 
+    /// @notice Mapping from a sorted token pair to their reserves. Access is via reserves[token0][token1].
+    mapping(address => mapping(address => PairReserves)) public reserves;
+
     // =============================================================
-    //                       CUSTOM ERRORS
+    //                           CUSTOM ERRORS
     // =============================================================
     error SimpleSwap__IdenticalTokens();
     error SimpleSwap__Expired();
@@ -48,21 +47,22 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     error SimpleSwap__NoEthToWithdraw();
     error SimpleSwap__EthTransferFailed();
     error SimpleSwap__NoTokensToRecover();
-
     error SimpleSwap__InsufficientBalance();
     error SimpleSwap__InsufficientAllowance();
 
     // =============================================================
-    //                         EVENTS
+    //                              EVENTS
     // =============================================================
 
     /// @notice Emitted when liquidity is added to a pair.
+    /// @param sender The address that initiated the liquidity addition.
     /// @param tokenA The address of one of the tokens in the pair.
     /// @param tokenB The address of the other token in the pair.
     /// @param amountA The amount of tokenA added.
     /// @param amountB The amount of tokenB added.
     /// @param liquidity The amount of LP tokens minted.
     event LiquidityAdded(
+        address indexed sender,
         address indexed tokenA,
         address indexed tokenB,
         uint256 amountA,
@@ -71,12 +71,14 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     );
 
     /// @notice Emitted when liquidity is removed from a pair.
+    /// @param sender The address that initiated the liquidity removal.
     /// @param tokenA The address of one of the tokens in the pair.
     /// @param tokenB The address of the other token in the pair.
     /// @param amountA The amount of tokenA returned.
     /// @param amountB The amount of tokenB returned.
     /// @param liquidity The amount of LP tokens burned.
     event LiquidityRemoved(
+        address indexed sender,
         address indexed tokenA,
         address indexed tokenB,
         uint256 amountA,
@@ -85,24 +87,26 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     );
 
     /// @notice Emitted when a token swap occurs.
+    /// @param sender The address that initiated the swap.
     /// @param tokenIn The address of the token being sent to the pool.
     /// @param tokenOut The address of the token being received from the pool.
     /// @param amountIn The amount of `tokenIn` sent.
     /// @param amountOut The amount of `tokenOut` received.
     /// @param to The final recipient of the output tokens.
     event Swapped(
+        address indexed sender,
         address indexed tokenIn,
         address indexed tokenOut,
         uint256 amountIn,
         uint256 amountOut,
-        address indexed to
+        address to
     );
 
     // =============================================================
-    //                           MODIFIERS
+    //                             MODIFIERS
     // =============================================================
 
-    /// @notice The transaction is executed before the deadline.
+    /// @notice Ensures the transaction is executed before the deadline.
     /// @param deadline The timestamp by which the transaction must be executed.
     modifier checkDeadline(uint256 deadline) {
         if (block.timestamp > deadline) revert SimpleSwap__Expired();
@@ -110,17 +114,14 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     }
 
     // =============================================================
-    //                          CONSTRUCTOR
+    //                            CONSTRUCTOR
     // =============================================================
 
     /// @notice Sets the initial owner of the contract and initializes the LP token.
     /// @param initialOwner The address that will become the owner of the contract.
     constructor(
         address initialOwner
-    )
-        Ownable(initialOwner)
-        ERC20("SimpleSwap LPToken", "LPT") // Inicializa el token LP
-    {}
+    ) Ownable(initialOwner) ERC20("SimpleSwap LPToken", "LPT") {}
 
     // =============================================================
     //                         LOGIC FUNCTIONS
@@ -142,50 +143,45 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         checkDeadline(deadline)
         returns (uint256 amountA, uint256 amountB, uint256 liquidity)
     {
-        if (tokenA == tokenB) revert SimpleSwap__IdenticalTokens();
-        
-        PairReserves storage pair = (tokenA < tokenB)
-            ? reserves[tokenA][tokenB]
-            : reserves[tokenB][tokenA];
-        
-        uint256 reserve0 = pair.reserveA; 
-        uint256 reserve1 = pair.reserveB; 
+        // **OPTIMIZATION:** Read reserves into memory variables once.
+        (uint256 _reserveA, uint256 _reserveB) = _getReservesByTokens(
+            tokenA,
+            tokenB
+        );
+        uint256 currentTotalSupply = totalSupply();
 
         (amountA, amountB) = _calculateOptimalAmounts(
             amountADesired,
             amountBDesired,
             amountAMin,
             amountBMin,
-            reserve0,
-            reserve1,
-            totalSupply()
+            _reserveA,
+            _reserveB
         );
 
         IERC20(tokenA).safeTransferFrom(msg.sender, address(this), amountA);
         IERC20(tokenB).safeTransferFrom(msg.sender, address(this), amountB);
 
-        // Delega la lógica de acuñación de tokens de liquidez a una función auxiliar.
-        // Pasa totalSupply() directamente, evitando una variable local adicional.
         liquidity = _mintLiquidityTokens(
             amountA,
             amountB,
-            reserve0,
-            reserve1,
-            totalSupply(),
+            _reserveA,
+            _reserveB,
+            currentTotalSupply,
             to
         );
 
-        // Actualiza las reservas usando la función interna unificada.
-        // Pasa la referencia 'pair' directamente.
-        _updateReservesInternal(
+        // **REFACTOR:** Update reserves directly, avoiding passing storage pointers.
+        _updateReserves(tokenA, tokenB, int256(amountA), int256(amountB));
+
+        emit LiquidityAdded(
+            msg.sender,
             tokenA,
             tokenB,
-            int256(amountA),
-            int256(amountB),
-            pair
+            amountA,
+            amountB,
+            liquidity
         );
-
-        emit LiquidityAdded(tokenA, tokenB, amountA, amountB, liquidity);
     }
 
     /// @inheritdoc ISimpleSwap
@@ -203,38 +199,39 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         checkDeadline(deadline)
         returns (uint256 amountA, uint256 amountB)
     {
-        if (tokenA == tokenB) revert SimpleSwap__IdenticalTokens();
-        PairReserves storage pair = (tokenA < tokenB)
-            ? reserves[tokenA][tokenB]
-            : reserves[tokenB][tokenA];
-
         if (liquidity == 0 || liquidity > balanceOf(msg.sender))
-            revert SimpleSwap__InvalidLiquidity();      
-        address _token0 = (tokenA < tokenB) ? tokenA : tokenB;
+            revert SimpleSwap__InvalidLiquidity();
 
-        (amountA, amountB) = _calculateAndAdjustRemovedAmounts(
+        // **OPTIMIZATION:** Read reserves and total supply into memory once.
+        (uint256 _reserveA, uint256 _reserveB) = _getReservesByTokens(
             tokenA,
-            _token0,
-            pair, 
-            liquidity,
-            totalSupply()
+            tokenB
         );
+        uint256 currentTotalSupply = totalSupply();
 
-        _burn(msg.sender, liquidity);
+        // **REFACTOR:** Logic moved from _calculateAndAdjustRemovedAmounts to here.
+        amountA = (liquidity * _reserveA) / currentTotalSupply;
+        amountB = (liquidity * _reserveB) / currentTotalSupply;
 
         if (amountA < amountAMin) revert SimpleSwap__InsufficientAmountA();
         if (amountB < amountBMin) revert SimpleSwap__InsufficientAmountB();
 
-        _updateReservesInternal(
+        _burn(msg.sender, liquidity);
+
+        // **REFACTOR:** Update reserves directly with negative values.
+        _updateReserves(tokenA, tokenB, -int256(amountA), -int256(amountB));
+
+        IERC20(tokenA).safeTransfer(to, amountA);
+        IERC20(tokenB).safeTransfer(to, amountB);
+
+        emit LiquidityRemoved(
+            msg.sender,
             tokenA,
             tokenB,
-            -int256(amountA),
-            -int256(amountB),
-            pair
+            amountA,
+            amountB,
+            liquidity
         );
-        _performTokenTransfers(tokenA, tokenB, amountA, amountB, to);
-
-        _emitLiquidityRemovedEvent(tokenA, tokenB, amountA, amountB, liquidity);
     }
 
     /// @inheritdoc ISimpleSwap
@@ -245,271 +242,40 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         address to,
         uint256 deadline
     ) external override checkDeadline(deadline) {
-
         if (path.length != 2) revert SimpleSwap__InvalidPath();
-
         address tokenIn = path[0];
         address tokenOut = path[1];
 
-        uint256 amountOut = 0;
-
-        amountOut = _performSwapLogic(
-            amountIn,
-            amountOutMin,
-            tokenIn,
-            tokenOut,
-            to
-        );
-
-        emit Swapped(tokenIn, tokenOut, amountIn, amountOut, to);
-    }
-
-    // =============================================================
-    //           VIEW & PURE FUNCTIONS 
-    // =============================================================
-
-    /// @notice Gets the reserves for a token pair, returned in the same order as the input tokens.
-    /// @dev This function calls the internal helper `_getReservesByTokens`.
-    /// @param _tokenA The address of the first token.
-    /// @param _tokenB The address of the second token.
-    /// @return reserveA The reserve corresponding to tokenA.
-    /// @return reserveB The reserve corresponding to tokenB.
-    function getReserves(
-        address _tokenA,
-        address _tokenB
-    ) external view returns (uint256 reserveA, uint256 reserveB) {
-        
-        return _getReservesByTokens(_tokenA, _tokenB); // Llama a tu función interna existente
-    }
-
-    // =============================================================
-    //              INTERNAL HELPER FUNCTIONS
-    // =============================================================
-
-    /// @notice Gets the reserves for a token pair, returned in the same order as the input tokens.
-    /// @param _tokenA The address of the first token.
-    /// @param _tokenB The address of the second token.
-    /// @return reserveA The reserve corresponding to tokenA.
-    /// @return reserveB The reserve corresponding to tokenB.
-    function _getReservesByTokens(
-        address _tokenA,
-        address _tokenB
-    ) internal view returns (uint256 reserveA, uint256 reserveB) {
-        if (_tokenA == _tokenB) revert SimpleSwap__IdenticalTokens();
-        address _token0 = (_tokenA < _tokenB) ? _tokenA : _tokenB;
-
-        PairReserves storage pair = reserves[_token0][
-            (_tokenA < _tokenB) ? _tokenB : _tokenA
-        ];
-        (reserveA, reserveB) = _tokenA == _token0
-            ? (pair.reserveA, pair.reserveB)
-            : (pair.reserveB, pair.reserveA);
-    }
-
-    /// @dev Internal helper to calculate the optimal amounts of tokens to add based on current reserves.
-    /// @param amountADesired Desired amount of token A.
-    /// @param amountBDesired Desired amount of token B.
-    /// @param amountAMin Minimum acceptable amount of token A.
-    /// @param amountBMin Minimum acceptable amount of token B.
-    /// @param reserve0 Reserve of the canonical token0.
-    /// @param reserve1 Reserve of the canonical token1.
-    /// @param currentTotalSupply Total supply of LP tokens.
-    /// @return amountA The calculated amount of token A to add.
-    /// @return amountB The calculated amount of token B to add.
-    function _calculateOptimalAmounts(
-        uint256 amountADesired,
-        uint256 amountBDesired,
-        uint256 amountAMin,
-        uint256 amountBMin,
-        uint256 reserve0,
-        uint256 reserve1,
-        uint256 currentTotalSupply
-    ) private pure returns (uint256 amountA, uint256 amountB) {
-        if (currentTotalSupply == 0) {
-            amountA = amountADesired;
-            amountB = amountBDesired;
-        } else {
-            uint256 amountBOptimal = (amountADesired * reserve1) / reserve0;
-            if (amountBOptimal <= amountBDesired) {
-                if (amountBOptimal < amountBMin)
-                    revert SimpleSwap__InsufficientAmountB();
-                amountA = amountADesired;
-                amountB = amountBOptimal;
-            } else {
-                uint256 amountAOptimal = (amountBDesired * reserve0) / reserve1;
-                if (amountAOptimal < amountAMin)
-                    revert SimpleSwap__InsufficientAmountA();
-                amountA = amountAOptimal;
-                amountB = amountBDesired;
-            }
-        }
-        if (amountA < amountAMin) revert SimpleSwap__InsufficientAmountA();
-        if (amountB < amountBMin) revert SimpleSwap__InsufficientAmountB();
-    }
-
-    /// @dev Internal helper to mint LP tokens based on provided amounts and reserves.
-    /// @param amountA Amount of token A added.
-    /// @param amountB Amount of token B added.
-    /// @param reserve0 Reserve of the canonical token0.
-    /// @param reserve1 Reserve of the canonical token1.
-    /// @param currentTotalSupply Total supply of LP tokens.
-    /// @param to Recipient of LP tokens.
-    /// @return liquidity The amount of LP tokens minted.
-    /// @dev Internal helper to mint LP tokens based on provided amounts and reserves.
-    function _mintLiquidityTokens(
-        uint256 amountA,
-        uint256 amountB,
-        uint256 reserve0,
-        uint256 reserve1,
-        uint256 currentTotalSupply,
-        address to // Recipient of LP tokens
-    ) private returns (uint256 liquidity) {
-        if (currentTotalSupply == 0) {
-            liquidity = (amountA * amountB).sqrt();
-            if (liquidity <= MINIMUM_LIQUIDITY)
-                revert SimpleSwap__ZeroInitialLiquidity();
-
-            liquidity = liquidity - MINIMUM_LIQUIDITY;
-        } else {
-            uint256 liquidity0 = (amountA * currentTotalSupply) / reserve0;
-            uint256 liquidity1 = (amountB * currentTotalSupply) / reserve1;
-            liquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
-        }
-        _mint(to, liquidity);
-    }
-
-    /// @dev Internal helper to calculate and adjust the amounts of tokens to be removed.
-    /// @param _tokenA The address of token A as provided by the user.
-    /// @param _canonicalToken0 The canonical token0 address (lower address).
-    /// @param _pair The PairReserves storage reference.
-    /// @param _liquidity The amount of LP tokens to burn.
-    /// @param _currentTotalSupply The current total supply of LP tokens.
-    /// @return calculatedAmountA The calculated amount of token A to return.
-    /// @return calculatedAmountB The calculated amount of token B to return.
-    function _calculateAndAdjustRemovedAmounts(
-        address _tokenA,
-        address _canonicalToken0,
-        PairReserves storage _pair,
-        uint256 _liquidity,
-        uint256 _currentTotalSupply
-    )
-        private
-        view
-        returns (uint256 calculatedAmountA, uint256 calculatedAmountB)
-    {
-        calculatedAmountA = (_liquidity * _pair.reserveA) / _currentTotalSupply;
-        calculatedAmountB = (_liquidity * _pair.reserveB) / _currentTotalSupply;
-
-        if (_tokenA != _canonicalToken0) {
-            (calculatedAmountA, calculatedAmountB) = (
-                calculatedAmountB,
-                calculatedAmountA
-            );
-        }
-    }
-
-    /// @dev Internal helper to update reserves (add or subtract) based on token order.
-    /// @param _tokenA The address of one token in the pair.
-    /// @param _tokenB The address of the other token in the pair.
-    /// @param _amountAChange Change in amount for token A (can be negative).
-    /// @param _amountBChange Change in amount for token B (can be negative).
-    /// @param _pair The PairReserves storage reference for the pair.
-    function _updateReservesInternal(
-        address _tokenA,
-        address _tokenB,
-        int256 _amountAChange,
-        int256 _amountBChange,
-        PairReserves storage _pair
-    ) private {
-        if (_tokenA == _tokenB) revert SimpleSwap__IdenticalTokens();
-        address _token0 = (_tokenA < _tokenB) ? _tokenA : _tokenB;
-        if (_tokenA == _token0) {
-            _pair.reserveA = uint256(int256(_pair.reserveA) + _amountAChange);
-            _pair.reserveB = uint256(int256(_pair.reserveB) + _amountBChange);
-        } else {
-            _pair.reserveA = uint256(int256(_pair.reserveA) + _amountBChange);
-            _pair.reserveB = uint256(int256(_pair.reserveB) + _amountAChange);
-        }
-    }
-
-    /// @dev Internal helper to perform ERC20 token transfers.
-    /// @param _tokenA The address of the first token.
-    /// @param _tokenB The address of the second token.
-    /// @param _amountA The amount of token A to transfer.
-    /// @param _amountB The amount of token B to transfer.
-    /// @param _to The recipient address.
-    function _performTokenTransfers(
-        address _tokenA,
-        address _tokenB,
-        uint256 _amountA,
-        uint256 _amountB,
-        address _to
-    ) private {
-        IERC20(_tokenA).safeTransfer(_to, _amountA);
-        IERC20(_tokenB).safeTransfer(_to, _amountB);
-    }
-
-    /// @dev Internal helper to emit the LiquidityRemoved event.
-    /// @param tokenA The address of one of the tokens in the pair.
-    /// @param tokenB The address of the other token in the pair.
-    /// @param amountA The amount of tokenA returned.
-    /// @param amountB The amount of tokenB returned.
-    /// @param liquidity The amount of LP tokens burned.
-    function _emitLiquidityRemovedEvent(
-        address tokenA,
-        address tokenB,
-        uint256 amountA,
-        uint256 amountB,
-        uint256 liquidity
-    ) private {
-        emit LiquidityRemoved(tokenA, tokenB, amountA, amountB, liquidity);
-    }
-
-    /// @dev Internal helper to perform the core swap logic and token transfers.
-    /// @param amountIn Amount of input token.
-    /// @param amountOutMin Minimum acceptable amount of output token.
-    /// @param tokenIn Address of the input token.
-    /// @param tokenOut Address of the output token.
-    /// @param to Recipient of output tokens.
-    /// @return amountOut The calculated amount of output token.
-
-    function _performSwapLogic(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address tokenIn,
-        address tokenOut,
-        address to
-    ) private returns (uint256 amountOut) {
-        if (tokenIn == tokenOut) revert SimpleSwap__IdenticalTokens();
-
+        // **OPTIMIZATION:** Read reserves into memory variables once.
         (uint256 reserveIn, uint256 reserveOut) = _getReservesByTokens(
             tokenIn,
             tokenOut
         );
 
-        amountOut = getAmountOut(amountIn, reserveIn, reserveOut);
+        uint256 amountOut = getAmountOut(amountIn, reserveIn, reserveOut);
         if (amountOut < amountOutMin)
             revert SimpleSwap__InsufficientOutputAmount();
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
 
-        _updateReservesInternal(
+        // **REFACTOR:** Update reserves directly.
+        _updateReserves(
             tokenIn,
             tokenOut,
             int256(amountIn),
-            -int256(amountOut),
-            (tokenIn < tokenOut)
-                ? reserves[tokenIn][tokenOut]
-                : reserves[tokenOut][tokenIn] // <- Se usa la expresión aquí directamente
+            -int256(amountOut)
         );
 
         IERC20(tokenOut).safeTransfer(to, amountOut);
+
+        emit Swapped(msg.sender, tokenIn, tokenOut, amountIn, amountOut, to);
     }
 
     // =============================================================
-    //              VIEW & PURE FUNCTIONS (Para interfaz y lecturas)
+    //                    VIEW & PURE FUNCTIONS
     // =============================================================
 
+    /// @inheritdoc ISimpleSwap
     function getAmountOut(
         uint256 amountIn,
         uint256 reserveIn,
@@ -528,14 +294,135 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         address tokenA,
         address tokenB
     ) external view override returns (uint256 price) {
-        (uint reserveA, uint reserveB) = _getReservesByTokens(tokenA, tokenB);
-        if (reserveA == 0 || reserveB == 0)
-            revert SimpleSwap__InsufficientLiquidity();
+        (uint256 reserveA, uint256 reserveB) = _getReservesByTokens(
+            tokenA,
+            tokenB
+        );
+        if (reserveA == 0) revert SimpleSwap__InsufficientLiquidity();
         price = (reserveB * 1e18) / reserveA;
     }
 
+    /// @notice Gets the reserves for a token pair, returned in the same order as the input tokens.
+    /// @param _tokenA The address of the first token.
+    /// @param _tokenB The address of the second token.
+    /// @return reserveA The reserve corresponding to tokenA.
+    /// @return reserveB The reserve corresponding to tokenB.
+    function getReserves(
+        address _tokenA,
+        address _tokenB
+    ) external view returns (uint256 reserveA, uint256 reserveB) {
+        return _getReservesByTokens(_tokenA, _tokenB);
+    }
+
     // =============================================================
-    //              EMERGENCY RECOVERY FUNCTIONS
+    //                  INTERNAL HELPER FUNCTIONS
+    // =============================================================
+
+    /// @dev Sorts token addresses to ensure consistent order for pair identification.
+    /// @param _tokenA Address of the first token.
+    /// @param _tokenB Address of the second token.
+    /// @return token0 The token with the lower address.
+    /// @return token1 The token with the higher address.
+    function _sortTokens(
+        address _tokenA,
+        address _tokenB
+    ) private pure returns (address token0, address token1) {
+        if (_tokenA == _tokenB) revert SimpleSwap__IdenticalTokens();
+        (token0, token1) = _tokenA < _tokenB
+            ? (_tokenA, _tokenB)
+            : (_tokenB, _tokenA);
+    }
+
+    /// @dev Gets the reserves for a token pair, returned in the order of the input tokens.
+    function _getReservesByTokens(
+        address _tokenA,
+        address _tokenB
+    ) internal view returns (uint256 reserveA, uint256 reserveB) {
+        (address _token0, ) = _sortTokens(_tokenA, _tokenB);
+        PairReserves storage pair = reserves[_token0][
+            _tokenA == _token0 ? _tokenB : _tokenA
+        ];
+        (reserveA, reserveB) = _tokenA == _token0
+            ? (pair.reserveA, pair.reserveB)
+            : (pair.reserveB, pair.reserveA);
+    }
+
+    /// @dev Updates reserves for a pair based on the provided changes.
+    function _updateReserves(
+        address _tokenA,
+        address _tokenB,
+        int256 _amountAChange,
+        int256 _amountBChange
+    ) private {
+        (address _token0, address _token1) = _sortTokens(_tokenA, _tokenB);
+        PairReserves storage pair = reserves[_token0][_token1];
+
+        (int256 change0, int256 change1) = _tokenA == _token0
+            ? (_amountAChange, _amountBChange)
+            : (_amountBChange, _amountAChange);
+
+        pair.reserveA = uint256(int256(pair.reserveA) + change0);
+        pair.reserveB = uint256(int256(pair.reserveB) + change1);
+    }
+
+    /// @dev Calculates optimal token amounts for adding liquidity.
+    function _calculateOptimalAmounts(
+        uint256 amountADesired,
+        uint256 amountBDesired,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        uint256 reserveA,
+        uint256 reserveB
+    ) private pure returns (uint256 amountA, uint256 amountB) {
+        if (reserveA == 0 && reserveB == 0) {
+            (amountA, amountB) = (amountADesired, amountBDesired);
+        } else {
+            uint256 amountBOptimal = (amountADesired * reserveB) / reserveA;
+            if (amountBOptimal <= amountBDesired) {
+                if (amountBOptimal < amountBMin)
+                    revert SimpleSwap__InsufficientAmountB();
+                (amountA, amountB) = (amountADesired, amountBOptimal);
+            } else {
+                uint256 amountAOptimal = (amountBDesired * reserveA) / reserveB;
+                if (amountAOptimal < amountAMin)
+                    revert SimpleSwap__InsufficientAmountA();
+                (amountA, amountB) = (amountAOptimal, amountBDesired);
+            }
+        }
+    }
+
+    /// @dev Mints LP tokens based on provided amounts and reserves.
+    function _mintLiquidityTokens(
+        uint256 amountA,
+        uint256 amountB,
+        uint256 reserveA,
+        uint256 reserveB,
+        uint256 currentTotalSupply,
+        address to
+    ) private returns (uint256 liquidity) {
+        if (currentTotalSupply == 0) {
+            // This is the first liquidity provision
+            liquidity = (amountA * amountB).sqrt();
+            if (liquidity <= MINIMUM_LIQUIDITY)
+                revert SimpleSwap__ZeroInitialLiquidity();
+            // We subtract the minimum liquidity from the user's share, effectively "burning" it.
+            // DO NOT mint to address(0) as it's blocked by OpenZeppelin's ERC20 implementation.
+            liquidity = liquidity - MINIMUM_LIQUIDITY;
+        } else {
+            // Subsequent liquidity provisions
+            uint256 liquidityA = (amountA * currentTotalSupply) / reserveA;
+            uint256 liquidityB = (amountB * currentTotalSupply) / reserveB;
+            liquidity = liquidityA < liquidityB ? liquidityA : liquidityB;
+        }
+
+        if (liquidity == 0) revert SimpleSwap__InsufficientLiquidity();
+
+        // Mint the final liquidity amount to the recipient
+        _mint(to, liquidity);
+    }
+
+    // =============================================================
+    //                EMERGENCY RECOVERY FUNCTIONS
     // =============================================================
 
     /// @notice Allows the contract to receive Ether.

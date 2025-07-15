@@ -1,0 +1,16 @@
+# hardhat/.env.example.localhost
+# Environment variables for local development and running tests/coverage with Hardhat Network.
+# Copy this file to .env to use it in your local environment.
+
+# Private key for a local deployer account.
+# This key is for a LOCAL and test environment ONLY. It is NOT your real private key.
+# Example: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d730d4187ac
+LOCAL_DEPLOYER_PRIVATE_KEY=
+
+# Optional: Local RPC URL if needed for specific configurations.
+# Hardhat CLI usually connects to 8545 by default when you run 'hardhat node'.
+LOCAL_RPC_URL=http://127.0.0.1:8545
+
+# Optional: Configuration for local gas reports.
+# Set to 'false' to disable gas reports.
+REPORT_GAS=false

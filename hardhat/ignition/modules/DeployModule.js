@@ -2,24 +2,19 @@
 
 const { buildModule } = require("@nomicfoundation/hardhat-ignition/modules");
 
-// Definimos el módulo. "SimpleSwapModule" es un ID único para este despliegue.
 module.exports = buildModule("SimpleSwapModule", (m) => {
-  // 1. Parámetros de entrada para el módulo (más seguro que hardcodear)
-  const ownerAndRecipient = m.getParameter(
-    "ownerAndRecipient",
-    "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc" // My address
-  );
-  
+  // 1. Obtiene la cuenta que está realizando el despliegue.
+  // Esta será la misma dirección para el owner y el recipient inicial.
+  const deployerAccount = m.getAccount(0);
 
-  const tokenA = m.contract("MyTokenA", [ownerAndRecipient, ownerAndRecipient]);
-  const tokenB = m.contract("MyTokenB", [ownerAndRecipient, ownerAndRecipient]);
+  // 2. Despliega los tokens.
+  // Pasamos la misma cuenta (deployerAccount) para ambos parámetros del constructor.
+  const tokenA = m.contract("MyTokenA", [deployerAccount, deployerAccount]);
+  const tokenB = m.contract("MyTokenB", [deployerAccount, deployerAccount]);
   
-  
-  const simpleSwap = m.contract("SimpleSwap", [ownerAndRecipient]);
+  // 3. Despliega el contrato principal, pasándole la cuenta del deployer como owner.
+  const simpleSwap = m.contract("SimpleSwap", [deployerAccount]);
 
-  console.log("Módulo de despliegue configurado.");
-  console.log("Owner y Recipient:", ownerAndRecipient);
-  
-  // 4. Devolvemos los contratos para poder interactuar con ellos si es necesario.
+  // 4. Devuelve los contratos desplegados.
   return { tokenA, tokenB, simpleSwap };
 });
