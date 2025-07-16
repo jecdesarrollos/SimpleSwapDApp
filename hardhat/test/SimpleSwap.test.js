@@ -383,6 +383,8 @@ describe("SimpleSwap - Core Functionality Tests", function () {
             expect(priceReverse).to.equal(expectedPriceReverse);
         });
 
+
+
         it("getAmountOut should calculate the output amount correctly", async function () {
             const reservesA = await myTokenA.balanceOf(simpleSwap.target);
             const reservesB = await myTokenB.balanceOf(simpleSwap.target);

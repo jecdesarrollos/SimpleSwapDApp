@@ -1,7 +1,7 @@
 /* src/App.css */
 
 :root {
-  /* Define una variable para el tamaño de fuente base, puedes ajustarla */
+  /* Define a variable for the base font size, you can adjust it */
   --base-font-size: 16px; 
 }
 
@@ -10,7 +10,7 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
-  /* Establece el tamaño de fuente base para el documento */
+  /* Set the base font size for the document */
   font-size: var(--base-font-size); 
 }
 
@@ -48,7 +48,7 @@
 
 .read-the-docs {
   color: #888;
-  /* Ajusta el tamaño de fuente para un texto secundario */
+  /* Adjust font size for secondary text */
   font-size: 0.9rem; 
 }
 
@@ -60,7 +60,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* Ajusta el tamaño de fuente general de la aplicación */
+  /* Adjust general font size for the application */
   font-size: calc(0.6rem + 1vmin); 
   color: white;
 }
@@ -68,7 +68,7 @@
 .App-header {
   margin-bottom: 10px;
   padding:5px;
-  /* Podrías considerar un tamaño de fuente más grande para encabezados */
+  /* You might consider a larger font size for headers */
   font-size: 1.4rem; 
 }
 
@@ -89,7 +89,7 @@ button {
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-  /* Ajusta el tamaño de fuente de los botones */
+  /* Adjust font size of buttons */
   font-size: 1rem; 
   margin: 10px 5px;
   transition: background-color 0.3s ease;
@@ -113,7 +113,7 @@ select {
   border: 1px solid #555;
   background-color: #444;
   color: white;
-  /* Ajusta el tamaño de fuente de los inputs y selects */
+  /* Adjust font size of inputs and selects */
   font-size: 1rem; 
 }
 
@@ -154,20 +154,20 @@ hr {
 }
 
 .swap-arrow {
-  /* Un tamaño de fuente más grande para el ícono de la flecha */
+  /* A larger font size for the arrow icon */
   font-size: 2.2rem; 
   margin: 10px 0;
   color: #61dafb;
 }
 
-/* Mensajes de estado */
+/* Status messages */
 p[style*="color: red"] {
   background-color: #ffe0e0;
   color: #cc0000 !important;
   padding: 8px;
   border-radius: 5px;
   margin-top: 10px;
-  /* Ajusta el tamaño de fuente para los mensajes de error/éxito */
+  /* Adjust font size for error/success messages */
   font-size: 0.95rem; 
 }
 
@@ -177,27 +177,27 @@ p[style*="color: green"] {
   padding: 8px;
   border-radius: 5px;
   margin-top: 10px;
-  /* Ajusta el tamaño de fuente para los mensajes de error/éxito */
+  /* Adjust font size for error/success messages */
   font-size: 0.95rem; 
 }
 
-/* Para alinear el botón y el texto en la misma línea */
+/* To align the button and text on the same line */
 .balance-line {
   display: flex;
-  align-items: center; /* Centra verticalmente el botón con el texto */
-  gap: 15px; /* Añade un espacio entre el botón y el texto */
-  margin-bottom: 10px; /* Espacio debajo de cada línea */
+  align-items: center; /* Vertically center the button with the text */
+  gap: 15px; /* Add spacing between the button and the text */
+  margin-bottom: 10px; /* Space below each line */
 }
 
-/* Para hacer los botones de claim más pequeños */
+/* To make claim buttons smaller */
 .claim-button {
-  padding: 5px 10px; /* Reduce el relleno del botón */
-  font-size: 0.8em;  /* Reduce el tamaño de la fuente */
-  margin: 0;         /* Elimina márgenes extra */
+  padding: 5px 10px; /* Reduce button padding */
+  font-size: 0.8em;  /* Reduce font size */
+  margin: 0;         /* Remove extra margins */
 }
 
-/* Para reducir el espacio entre secciones */
+/* To reduce spacing between sections */
 .section {
-  margin-top: 15px; /* Reduce el margen superior de cada sección */
+  margin-top: 15px; /* Reduce top margin of each section */
   margin-bottom: 15px;
 }

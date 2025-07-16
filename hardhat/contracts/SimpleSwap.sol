@@ -9,9 +9,10 @@ import "./ISimpleSwap.sol";
 
 using Math for uint256;
 
-/// @title SimpleSwap
+/// @title SimpleSwap - Uniswap V2-style Automated Market Maker (AMM) contract.
 /// @author Jorge Enrique Cabrera
-/// @notice A self-contained Uniswap V2-style Automated Market Maker contract.
+/// @notice This contract allows adding/removing liquidity and swapping between ERC20 tokens without relying on Uniswap protocol.
+/// @dev Implements an AMM with LP tokens representing shares of liquidity pools.
 contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     using SafeERC20 for IERC20;
 
@@ -19,16 +20,21 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     //                          STATE & CONSTANTS
     // =============================================================
 
-    /// @notice The minimum amount of liquidity burned upon pool creation to protect against price manipulation.
+    /// @notice Minimum liquidity tokens that are permanently burned when the first liquidity is added.
+    /// @dev This prevents the pool from being drained completely and protects against price manipulation.
     uint256 public constant MINIMUM_LIQUIDITY = 1e3;
 
-    /// @notice Struct to hold the reserves for a token pair, ordered by token address.
+    /// @notice Represents the reserves of a token pair, ordered by token address.
+    /// @dev reserveA corresponds to the token with the lower address (token0).
+    /// @dev reserveB corresponds to the token with the higher address (token1).
     struct PairReserves {
         uint256 reserveA; // Reserve of the token with the lower address (_token0)
         uint256 reserveB; // Reserve of the token with the higher address (_token1)
     }
 
-    /// @notice Mapping from a sorted token pair to their reserves. Access is via reserves[token0][token1].
+    /// @notice Mapping that stores liquidity reserves for each token pair, identified by their sorted addresses.
+    /// @dev Access reserves using reserves[token0][token1], where token0 and token1 are ordered addresses (token0 < token1).
+    ///      Each PairReserves struct holds `reserveA` for token0 and `reserveB` for token1.
     mapping(address => mapping(address => PairReserves)) public reserves;
 
     // =============================================================
@@ -117,8 +123,9 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     //                            CONSTRUCTOR
     // =============================================================
 
-    /// @notice Sets the initial owner of the contract and initializes the LP token.
-    /// @param initialOwner The address that will become the owner of the contract.
+    /// @notice Initializes the SimpleSwap contract by setting the initial owner and
+    ///         initializing the LP token with name "SimpleSwap LPToken" and symbol "LPT".
+    /// @param initialOwner The address to be set as the contract owner.
     constructor(
         address initialOwner
     ) Ownable(initialOwner) ERC20("SimpleSwap LPToken", "LPT") {}
@@ -127,7 +134,19 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     //                         LOGIC FUNCTIONS
     // =============================================================
 
-    /// @inheritdoc ISimpleSwap
+    /// @notice Adds liquidity to the pool for a given token pair.
+    /// @dev Transfers tokens from the sender, mints LP tokens, and updates reserves.
+    /// @param tokenA The address of the first token.
+    /// @param tokenB The address of the second token.
+    /// @param amountADesired The desired amount of tokenA to add as liquidity.
+    /// @param amountBDesired The desired amount of tokenB to add as liquidity.
+    /// @param amountAMin The minimum amount of tokenA to add (slippage protection).
+    /// @param amountBMin The minimum amount of tokenB to add (slippage protection).
+    /// @param to The address that will receive the LP tokens.
+    /// @param deadline The timestamp by which the transaction must be completed.
+    /// @return amountA The actual amount of tokenA added.
+    /// @return amountB The actual amount of tokenB added.
+    /// @return liquidity The number of LP tokens minted to the recipient.
     function addLiquidity(
         address tokenA,
         address tokenB,
@@ -143,7 +162,7 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         checkDeadline(deadline)
         returns (uint256 amountA, uint256 amountB, uint256 liquidity)
     {
-        // **OPTIMIZATION:** Read reserves into memory variables once.
+        // Read reserves into memory variables once.
         (uint256 _reserveA, uint256 _reserveB) = _getReservesByTokens(
             tokenA,
             tokenB
@@ -171,7 +190,7 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
             to
         );
 
-        // **REFACTOR:** Update reserves directly, avoiding passing storage pointers.
+        // Update reserves avoiding passing storage pointers.
         _updateReserves(tokenA, tokenB, int256(amountA), int256(amountB));
 
         emit LiquidityAdded(
@@ -184,6 +203,17 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         );
     }
 
+    /// @notice Removes liquidity from the pool and returns the corresponding amounts of tokenA and tokenB.
+    /// @dev Burns the sender's liquidity tokens and transfers proportional token amounts back to the user.
+    /// @param tokenA The address of tokenA in the pair.
+    /// @param tokenB The address of tokenB in the pair.
+    /// @param liquidity The amount of liquidity tokens to burn.
+    /// @param amountAMin The minimum amount of tokenA to receive (used for slippage protection).
+    /// @param amountBMin The minimum amount of tokenB to receive (used for slippage protection).
+    /// @param to The address to receive the tokens.
+    /// @param deadline The timestamp after which the transaction is invalid.
+    /// @return amountA The actual amount of tokenA returned.
+    /// @return amountB The actual amount of tokenB returned.
     /// @inheritdoc ISimpleSwap
     function removeLiquidity(
         address tokenA,
@@ -202,14 +232,13 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         if (liquidity == 0 || liquidity > balanceOf(msg.sender))
             revert SimpleSwap__InvalidLiquidity();
 
-        // **OPTIMIZATION:** Read reserves and total supply into memory once.
+        // Read reserves and total supply into memory once.
         (uint256 _reserveA, uint256 _reserveB) = _getReservesByTokens(
             tokenA,
             tokenB
         );
         uint256 currentTotalSupply = totalSupply();
 
-        // **REFACTOR:** Logic moved from _calculateAndAdjustRemovedAmounts to here.
         amountA = (liquidity * _reserveA) / currentTotalSupply;
         amountB = (liquidity * _reserveB) / currentTotalSupply;
 
@@ -218,7 +247,7 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
 
         _burn(msg.sender, liquidity);
 
-        // **REFACTOR:** Update reserves directly with negative values.
+        // Update reserves directly with negative values.
         _updateReserves(tokenA, tokenB, -int256(amountA), -int256(amountB));
 
         IERC20(tokenA).safeTransfer(to, amountA);
@@ -234,7 +263,13 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         );
     }
 
-    /// @inheritdoc ISimpleSwap
+    /// @notice Swaps an exact amount of input tokens for as many output tokens as possible.
+    /// @dev Supports only two-token paths. Validates path, checks slippage, transfers tokens, and updates reserves.
+    /// @param amountIn The exact amount of input tokens to send.
+    /// @param amountOutMin The minimum amount of output tokens to receive (slippage protection).
+    /// @param path The token swap path. Must be of length 2: [tokenIn, tokenOut].
+    /// @param to The address to receive the output tokens.
+    /// @param deadline The timestamp after which the transaction is invalid.
     function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -246,7 +281,7 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         address tokenIn = path[0];
         address tokenOut = path[1];
 
-        // **OPTIMIZATION:** Read reserves into memory variables once.
+        // Read reserves into memory variables once.
         (uint256 reserveIn, uint256 reserveOut) = _getReservesByTokens(
             tokenIn,
             tokenOut
@@ -258,7 +293,7 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
 
-        // **REFACTOR:** Update reserves directly.
+        // Update reserves directly.
         _updateReserves(
             tokenIn,
             tokenOut,
@@ -275,7 +310,16 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     //                    VIEW & PURE FUNCTIONS
     // =============================================================
 
-    /// @inheritdoc ISimpleSwap
+    /**
+     * @notice Calculates the output token amount for a given input, using constant product formula.
+     * @dev Assumes a 0% fee for simplicity (i.e., no fee deduction like Uniswap's 0.3%).
+     * @param amountIn Amount of input tokens provided.
+     * @param reserveIn Reserve of the input token in the pool.
+     * @param reserveOut Reserve of the output token in the pool.
+     * @return amountOut The amount of output tokens received.
+     * @custom:throws SimpleSwap__ZeroInputAmount If input amount is zero.
+     * @custom:throws SimpleSwap__InsufficientLiquidity If either reserve is zero.
+     */
     function getAmountOut(
         uint256 amountIn,
         uint256 reserveIn,
@@ -289,7 +333,14 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         amountOut = numerator / denominator;
     }
 
-    /// @inheritdoc ISimpleSwap
+    /**
+     * @notice Returns the current price of tokenB in terms of tokenA (i.e., how much tokenB per 1 tokenA).
+     * @dev The result is scaled by 1e18 for fixed-point precision.
+     * @param tokenA The address of the base token (denominator).
+     * @param tokenB The address of the quote token (numerator).
+     * @return price The price of tokenB per tokenA, scaled by 1e18.
+     * @custom:throws SimpleSwap__InsufficientLiquidity If reserveA is zero (to avoid division by zero).
+     */
     function getPrice(
         address tokenA,
         address tokenB
@@ -333,7 +384,14 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
             : (_tokenB, _tokenA);
     }
 
-    /// @dev Gets the reserves for a token pair, returned in the order of the input tokens.
+    /**
+     * @dev Retrieves the reserves for the given token pair, returning them in the
+     *      same order as the input tokens.
+     * @param _tokenA The address of the first token.
+     * @param _tokenB The address of the second token.
+     * @return reserveA Reserve amount corresponding to _tokenA.
+     * @return reserveB Reserve amount corresponding to _tokenB.
+     */
     function _getReservesByTokens(
         address _tokenA,
         address _tokenB
@@ -347,7 +405,15 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
             : (pair.reserveB, pair.reserveA);
     }
 
-    /// @dev Updates reserves for a pair based on the provided changes.
+    /**
+     * @dev Updates the stored reserves for a token pair by applying the given changes.
+     *      The changes can be positive or negative (using signed integers) to reflect
+     *      additions or subtractions of liquidity or token amounts.
+     * @param _tokenA Address of the first token in the pair.
+     * @param _tokenB Address of the second token in the pair.
+     * @param _amountAChange Signed amount to change reserve of token A (positive to increase, negative to decrease).
+     * @param _amountBChange Signed amount to change reserve of token B (positive to increase, negative to decrease).
+     */
     function _updateReserves(
         address _tokenA,
         address _tokenB,
@@ -365,7 +431,20 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         pair.reserveB = uint256(int256(pair.reserveB) + change1);
     }
 
-    /// @dev Calculates optimal token amounts for adding liquidity.
+    /**
+     * @notice Calculates the optimal token amounts to be added as liquidity, maintaining the pool ratio.
+     * @dev Used internally by `addLiquidity` to ensure the correct token proportions are added.
+     * @param amountADesired The desired amount of token A to add.
+     * @param amountBDesired The desired amount of token B to add.
+     * @param amountAMin The minimum amount of token A to accept (for slippage protection).
+     * @param amountBMin The minimum amount of token B to accept (for slippage protection).
+     * @param reserveA The current reserve of token A in the pool.
+     * @param reserveB The current reserve of token B in the pool.
+     * @return amountA The actual amount of token A to add.
+     * @return amountB The actual amount of token B to add.
+     * @custom:throws SimpleSwap__InsufficientAmountA If the optimal amountA is below amountAMin.
+     * @custom:throws SimpleSwap__InsufficientAmountB If the optimal amountB is below amountBMin.
+     */
     function _calculateOptimalAmounts(
         uint256 amountADesired,
         uint256 amountBDesired,
@@ -391,7 +470,19 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         }
     }
 
-    /// @dev Mints LP tokens based on provided amounts and reserves.
+    /**
+     * @notice Mints LP tokens based on the amount of tokens added and current pool reserves.
+     * @dev Handles both initial and subsequent liquidity provisions. The first liquidity provider permanently locks `MINIMUM_LIQUIDITY`.
+     * @param amountA The amount of token A added to the pool.
+     * @param amountB The amount of token B added to the pool.
+     * @param reserveA The current reserve of token A in the pool.
+     * @param reserveB The current reserve of token B in the pool.
+     * @param currentTotalSupply The total supply of LP tokens before minting.
+     * @param to The address that will receive the newly minted LP tokens.
+     * @return liquidity The amount of LP tokens minted.
+     * @custom:throws SimpleSwap__ZeroInitialLiquidity If initial liquidity is insufficient to meet the minimum requirement.
+     * @custom:throws SimpleSwap__InsufficientLiquidity If the resulting liquidity to mint is zero.
+     */
     function _mintLiquidityTokens(
         uint256 amountA,
         uint256 amountB,
@@ -425,10 +516,19 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     //                EMERGENCY RECOVERY FUNCTIONS
     // =============================================================
 
-    /// @notice Allows the contract to receive Ether.
+    /**
+     * @notice Allows the contract to receive Ether transfers.
+     * @dev This function is triggered when the contract receives ETH without data.
+     * It exists to prevent accidental reverts when ETH is sent directly.
+     */
     receive() external payable {}
 
-    /// @notice Allows the owner to withdraw any ETH accidentally sent to this contract.
+    /**
+     * @notice Allows the contract owner to withdraw any ETH accidentally sent to this contract.
+     * @dev Only callable by the owner. Reverts if the contract has no ETH balance or if the transfer fails.
+     * @custom:throws SimpleSwap__NoEthToWithdraw If the contract has no ETH to withdraw.
+     * @custom:throws SimpleSwap__EthTransferFailed If the ETH transfer to the owner fails.
+     */
     function withdrawETH() external onlyOwner {
         uint256 balance = address(this).balance;
         if (balance == 0) revert SimpleSwap__NoEthToWithdraw();
@@ -436,8 +536,12 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         if (!success) revert SimpleSwap__EthTransferFailed();
     }
 
-    /// @notice Allows the owner to recover any arbitrary ERC20 token sent to this contract.
-    /// @param tokenAddress The address of the ERC20 token to recover.
+    /**
+     * @notice Allows the contract owner to recover any ERC20 token accidentally sent to this contract.
+     * @dev Only callable by the owner. Reverts if the contract has no balance of the specified token.
+     * @param tokenAddress The address of the ERC20 token to recover.
+     * @custom:throws SimpleSwap__NoTokensToRecover If there are no tokens of the given address to recover.
+     */
     function recoverERC20(address tokenAddress) external onlyOwner {
         uint256 tokenBalance = IERC20(tokenAddress).balanceOf(address(this));
         if (tokenBalance == 0) revert SimpleSwap__NoTokensToRecover();

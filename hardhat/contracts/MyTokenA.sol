@@ -20,7 +20,8 @@ contract MyTokenA is ERC20, Ownable {
     /// @notice The cooldown period (in seconds) between faucet claims for a single address.
     uint256 public constant FAUCET_COOLDOWN = 5 minutes;
 
-    /// @notice A record of the last time an address claimed tokens from the faucet.
+    /// @notice Tracks the last faucet claim timestamp per address.
+    /// @dev Used to enforce the cooldown between claims.
     mapping(address => uint256) public lastClaimTimestamp;
 
     // =============================================================
@@ -51,10 +52,9 @@ contract MyTokenA is ERC20, Ownable {
     //                        Public Functions
     // =============================================================
 
-    /// @notice Allow any user claim for tokens
-    /// @dev Colddown just in case of abuse
+    /// @notice Allows any user to claim a fixed amount of tokens.
+    /// @dev Enforces a cooldown period of 5 minutes between claims for the same address.
     function faucet() public {
-        // Verify 5 minutes from the last claim
         require(
             block.timestamp >= lastClaimTimestamp[msg.sender] + FAUCET_COOLDOWN,
             "Faucet cooldown: Please wait 5 minutes."
