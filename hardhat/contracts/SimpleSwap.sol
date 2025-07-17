@@ -55,7 +55,8 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
     error SimpleSwap__NoTokensToRecover();
     error SimpleSwap__InsufficientBalance();
     error SimpleSwap__InsufficientAllowance();
-
+    error SimpleSwap__TokenNotInPair();
+	
     // =============================================================
     //                              EVENTS
     // =============================================================
@@ -536,15 +537,38 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
         if (!success) revert SimpleSwap__EthTransferFailed();
     }
 
-    /**
-     * @notice Allows the contract owner to recover any ERC20 token accidentally sent to this contract.
-     * @dev Only callable by the owner. Reverts if the contract has no balance of the specified token.
-     * @param tokenAddress The address of the ERC20 token to recover.
-     * @custom:throws SimpleSwap__NoTokensToRecover If there are no tokens of the given address to recover.
-     */
-    function recoverERC20(address tokenAddress) external onlyOwner {
-        uint256 tokenBalance = IERC20(tokenAddress).balanceOf(address(this));
-        if (tokenBalance == 0) revert SimpleSwap__NoTokensToRecover();
-        IERC20(tokenAddress).safeTransfer(owner(), tokenBalance);
+/**
+ * @notice Allows the contract owner to recover any ERC20 token accidentally sent to this contract.
+ * @dev THIS IS A CRITICAL FUNCTION. It's designed to only recover tokens that are NOT part of the
+ * official liquidity reserves. It calculates the surplus (balance - reserve) and transfers only that.
+ * @param tokenA The address of the first token in the pair.
+ * @param tokenB The address of the second token in the pair.
+ * @param tokenToRecover The specific token address to recover from the pair's balance.
+ * @custom:throws SimpleSwap__NoTokensToRecover If the contract's balance of the token does not exceed its reserve.
+ */
+function recoverERC20(address tokenA, address tokenB, address tokenToRecover) external onlyOwner {
+    (uint256 reserveA, uint256 reserveB) = _getReservesByTokens(tokenA, tokenB);
+    
+    uint256 reserveToRecover;
+    if (tokenToRecover == tokenA) {
+        reserveToRecover = reserveA;
+    } else if (tokenToRecover == tokenB) {
+        reserveToRecover = reserveB;
+    } else {
+        // If the token to recover is not part of the specified pair, we can't calculate surplus.
+        // For simplicity and security, we don't handle this case. 
+        // A more complex implementation might check all pools, but that's gas-intensive.
+        revert("SimpleSwap__TokenNotInPair"); 
     }
+
+    uint256 totalBalance = IERC20(tokenToRecover).balanceOf(address(this));
+    
+    if (totalBalance <= reserveToRecover) {
+        revert SimpleSwap__NoTokensToRecover();
+    }
+
+    uint256 surplus = totalBalance - reserveToRecover;
+    
+    IERC20(tokenToRecover).safeTransfer(owner(), surplus);
+}
 }
