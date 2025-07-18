@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <title>Code coverage report for contracts\ContractsMaliciousReceiver.sol</title>
+    <title>Code coverage report for contracts\SuccessResponse.sol</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -16,18 +16,18 @@
 <div class='wrapper'>
   <div class='pad1'>
     <h1>
-      <a href="../index.html">all files</a> / <a href="index.html">contracts/</a> ContractsMaliciousReceiver.sol
+      <a href="../index.html">all files</a> / <a href="index.html">contracts/</a> SuccessResponse.sol
     </h1>
     <div class='clearfix'>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>2/2</span>
+        <span class='fraction'>0/0</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>2/2</span>
+        <span class='fraction'>0/0</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -37,7 +37,7 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>4/4</span>
+        <span class='fraction'>0/0</span>
       </div>
     </div>
   </div>
@@ -63,45 +63,48 @@
 18
 19
 20
-21</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+21
+22</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
-<span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// contracts/MaliciousReceiver.sol
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// contracts/SuccessResponse.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
 &nbsp;
-contract MaliciousReceiver {
-    receive() external payable {
-        revert("I reject ETH!");
-    }
+pragma solidity ^0.8.20;
 &nbsp;
-    function executeWithdraw(address simpleSwapAddress) external {
-        (bool success, bytes memory returnData) = simpleSwapAddress.call(
-            abi.encodeWithSignature("withdrawETH()")
-        );
-&nbsp;
-        if (!success) {
-            assembly {
-                revert(add(returnData, 32), mload(returnData))
-            }
-        }
+/// @title SuccessResponse
+/// @author Jorge Enrique Cabrera
+/// @notice A mock contract designed exclusively for testing purposes. It provides a function
+/// @notice endpoint that always succeeds when called.
+/// @dev This contract is used to test the success path of a low-level `.call()` in `ContractsMaliciousReceiver.sol`.
+/// @dev By having an empty function body, it guarantees that the call will
+/// @dev return `success = true`, allowing tests to cover branches that handle
+/// @dev successful internal transactions.
+contract SuccessResponse {
+    	
+	/// @notice A just Success Response function that intentionally does nothing to ensure a successful execution.
+    /// @dev This function exists solely to be a valid target for a `.call()`. Its empty body
+    /// @dev guarantees that the call will not run out of gas or revert, thus testing the
+    /// @dev successful execution path of the calling contract.
+	function withdrawETH() external {
     }
 }</pre></td></tr>
 </table></pre>

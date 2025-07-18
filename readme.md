@@ -1,67 +1,109 @@
-# SimpleSwap DApp - Decentralized Exchange
+# SimpleSwap DApp - A Uniswap V2-Style Decentralized Exchange
 
-### **Project Links**
-* **Live Application (Sepolia):** `https://tp4-frontend.vercel.app/`
-* **Test Coverage Report:** `https://coverage-report-zeta.vercel.app/`
-* **Demonstration Video:** `https://youtu.be/btd9hjmlMhU`
+## Project Overview
 
----
+**SimpleSwap** is a decentralized application (DApp) that implements a Uniswap V2-style exchange on the Sepolia testnet. This project demonstrates core Decentralized Finance (DeFi) concepts, including token swapping, liquidity provision, and dynamic price discovery through an Automated Market Maker (AMM) model.
 
-### ## Project Overview
+This document provides a comprehensive overview of the smart contract architecture, security considerations, and testing methodology for auditing purposes.
 
-SimpleSwap is a decentralized application (DApp) that implements a Uniswap V2-style exchange for ERC-20 tokens and liquidity management on the Sepolia testnet. This project demonstrates foundational Decentralized Finance (DeFi) functionalities, including token swapping, liquidity provision, and dynamic price discovery based on an Automated Market Maker (AMM) model.
+-----
 
-The project is built with a focus on security, efficiency, and comprehensive testing.
+## Live Demo & Project Links
 
----
+  * **Live Application (Sepolia):** [`https://tp4-frontend.vercel.app/`](https://www.google.com/search?q=%5Bhttps://tp4-frontend.vercel.app/%5D\(https://tp4-frontend.vercel.app/\))
+  * **Test Coverage Report:** [`https://coverage-report-zeta.vercel.app/`](https://www.google.com/search?q=%5Bhttps://coverage-report-zeta.vercel.app/%5D\(https://coverage-report-zeta.vercel.app/\))
 
-### ## Smart Contract Details & Security
+-----
 
-This section provides critical information for auditing and verification purposes.
+## Smart Contracts & Architecture
 
-#### **Deployed Contracts (Sepolia Testnet)**
-* **`SimpleSwap`:** `0x2E69e49Ef7da58FFCfFc03b1d8f026B9e04FEA05`
-* **`MyTokenA`:** `0x02a36F4fDe45D84425e94C224F4981260423c25d`
-* **`MyTokenB`:** `0x951dcbf11737764c7aba36f5efbc62ea39a07bcc`
+The system is composed of a suite of modular smart contracts, prioritizing security and standard practices by building upon OpenZeppelin libraries.
 
-#### **Access Control**
-* The `SimpleSwap.sol` contract uses the **`Ownable`** pattern from OpenZeppelin.
-* The **owner** is the address that deployed the contract.
-* **Owner-only functions** are `withdrawETH()` and `recoverERC20()`, designed for emergency fund recovery and preventing tokens from being trapped in the contract. All core AMM functions (`addLiquidity`, `swap`, etc.) are permissionless.
+### Deployed Contracts (Sepolia Testnet)
 
-#### **Testing and Coverage**
-The contract suite has been rigorously tested using Hardhat's testing environment.
+  * **`SimpleSwap` (Core AMM):** [`0xc42A20B60255a96a74CbdDdB992E854a006755d5`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xc42A20B60255a96a74CbdDdB992E854a006755d5%5D\(https://sepolia.etherscan.io/address/0xc42A20B60255a96a74CbdDdB992E854a006755d5\))
+  * **`MyTokenA` (MTA):** [`0x8540e176C6Eca07cA883B65e4f3dd2ABC5768E6e`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x8540e176C6Eca07cA883B65e4f3dd2ABC5768E6e%5D\(https://sepolia.etherscan.io/address/0x8540e176C6Eca07cA883B65e4f3dd2ABC5768E6e\))
+  * **`MyTokenB` (MTB):** [`0xE1Ed976E539A335F21F32cb9A47ba0A86aB48669`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xE1Ed976E539A335F21F32cb9A47ba0A86aB48669%5D\(https://sepolia.etherscan.io/address/0xE1Ed976E539A335F21F32cb9A47ba0A86aB48669\))
+  * **Project Developer Wallet:** [`0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE%5D\(https://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE\))
 
-* **Test Results:** **16/16 tests passed** successfully, covering all core logic and edge cases.
-* **Coverage Summary:** The project exceeds standard quality requirements with comprehensive test coverage.
+### Contract File Structure
 
-| File               | % Stmts   | % Branch | % Funcs   | % Lines   |
-| ------------------ | --------  | -------- | -------   | -------   |
-| **SimpleSwap.sol** | **83.05** | **62.9** | **80**    | **82.89** |
-| **All files**      | **80.95** | **59.09**| **73.68** | **81.25** |
+The `contracts/` directory includes:
 
-*The uncovered lines in `SimpleSwap.sol` correspond to the emergency recovery functions, which are out of the scope of the main functionality tests.*
+  * `SimpleSwap.sol`: The core AMM logic contract, inheriting from OpenZeppelin's `Ownable` and `ERC20`.
+  * `ISimpleSwap.sol`: The public interface for the `SimpleSwap` contract.
+  * `MyTokenA.sol` / `MyTokenB.sol`: Standard ERC-20 token contracts for testing and interaction.
+  * `ContractsMaliciousReceiver.sol` / `SuccessResponse.sol`: Mock contracts used exclusively for advanced security testing of failure and success paths.
 
----
+### Security & Access Control
 
-### ## Quickstart Guide (Local Development)
+  * **Ownership:** The `SimpleSwap.sol` contract utilizes OpenZeppelin's `Ownable` pattern. Administrative functions are restricted to the owner.
+  * **Emergency Functions:** The owner-only functions `withdrawETH()` and `recoverERC20()` are designed for emergency recovery of accidentally sent funds. The `recoverERC20` function is secured against malicious draining of pool liquidity by only allowing the withdrawal of surplus tokens (balance \> reserve).
+  * **Error Handling:** The contract exclusively uses **custom errors** for reverting transactions, providing gas efficiency and clear error reasons without using long strings.
 
-Follow these steps to set up and run this project locally.
+-----
 
-**Prerequisites:**
-* Node.js (v18+), npm (v9+) or Yarn.
-* Git.
-* MetaMask browser extension.
+## ✅ Testing and Quality Assurance
 
-**1. Initial Setup:**
-Clone the repository and install the dependencies for both sub-projects.
+The project has undergone an exhaustive testing process using the **Hardhat** framework to guarantee correctness, security, and robustness.
+
+  * **Test Suite:** The suite comprises **52 passing tests**, covering all functions, modifiers, events, and a wide range of logical branches and potential failure points.
+  * **Methodology:** The tests cover:
+      * **Unit Testing:** Each function is tested for its expected inputs and outputs.
+      * **Integration Testing:** Multiple functions are tested in sequence to ensure state consistency.
+      * **Revert Testing:** All `require` conditions and modifiers are tested to ensure they fail as expected.
+      * **Security Testing:** Includes tests for access control vulnerabilities and advanced scenarios like failed ETH transfers from the owner address.
+
+### Final Coverage Report
+
+The project achieves **100% statement, function, and line coverage** on all core and mock contracts, with near-perfect branch coverage.
+
+| File | % Stmts | % Branch | % Funcs | % Lines |
+| :--- | :--- | :--- | :--- | :--- |
+| **All files** | **100** | **98.68** | **100** | **100** |
+| `SimpleSwap.sol` | 100 | 98.48 | 100 | 100 |
+
+-----
+
+## Quickstart Guide (Local Development)
+
+### Prerequisites
+
+  * Node.js (v18+)
+  * npm or Yarn
+  * Git
+
+### Installation & Setup
 
 ```bash
+# Clone the repository
 git clone git@github.com:jecdesarrollos/SimpleSwapDApp.git
-cd SimpleSwapDApp/
+cd SimpleSwapDApp
 
-# Install Hardhat dependencies
-cd hardhat/ && npm install && cd ../
+# Install Hardhat (backend) dependencies
+cd hardhat/
+npm install
+```
 
-# Install Frontend dependencies
-cd frontend/ && npm install && cd ../
+### Running Tests
+
+```bash
+# Run the complete test suite
+npx hardhat test
+
+# Generate a detailed coverage report
+npx hardhat coverage
+```
+
+### Deployment (Hardhat Ignition)
+
+This project uses **Hardhat Ignition** for robust and declarative deployments.
+
+```bash
+# In one terminal, start a local Hardhat node
+npx hardhat node
+
+# In a second terminal, deploy the contracts
+# (Replace 'Deploy.js' with the actual name of your module file)
+npx hardhat ignition deploy ignition/modules/Deploy.js --network localhost
+```

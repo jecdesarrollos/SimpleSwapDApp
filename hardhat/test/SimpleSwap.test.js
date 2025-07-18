@@ -1,573 +1,559 @@
-// hardhat/test/SimpleSwap.test.js
-
-// Import Hardhat testing tools
+// Import Hardhat and testing utilities
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
-// Define a test suite for the SimpleSwap contract
+// The main test suite for the SimpleSwap contract.
+// All tests related to this contract will be nested inside this block.
 describe("SimpleSwap - Core Functionality Tests", function () {
-  let SimpleSwap;
-  let simpleSwap;
-  let owner;
-  let addr1; // Auxiliary account
-  let MyTokenAContract;
-  let myTokenA;
-  let MyTokenBContract;
-  let myTokenB;
+    // --- Test Suite State Variables ---
+    // These variables are declared here to be accessible across all tests (`it` blocks)
+    // within this suite. They will be assigned values in the `beforeEach` hook.
+    let SimpleSwap;         // The contract factory for SimpleSwap
+    let simpleSwap;         // The deployed instance of the SimpleSwap contract
+    let owner;              // The primary account (signer) for tests, usually the deployer/owner
+    let addr1;              // A secondary account (signer) for tests
+    let MyTokenAContract;   // The contract factory for MyTokenA
+    let myTokenA;           // The deployed instance of the MyTokenA contract
+    let MyTokenBContract;   // The contract factory for MyTokenB
+    let myTokenB;           // The deployed instance of the MyTokenB contract
 
-  // Define common amounts for tests (using 18 decimals)
-  const initialSupply = ethers.parseEther("1000000"); // 1,000,000 tokens
-  const initialLiquidity = ethers.parseEther("10"); // 10 tokens for liquidity
+    // --- Constants ---
+    // Define common, fixed values here to ensure consistency and readability in tests.
+    const initialSupply = ethers.parseEther("1000000"); // 1,000,000 tokens (used in mock token constructors)
+    const initialLiquidity = ethers.parseEther("10");   // A standard amount for providing liquidity in tests
 
-  beforeEach(async function () {
-    [owner, addr1] = await ethers.getSigners();
-
-    MyTokenAContract = await ethers.getContractFactory("MyTokenA");
-    myTokenA = await MyTokenAContract.deploy(owner.address, owner.address);
-    MyTokenBContract = await ethers.getContractFactory("MyTokenB");
-    myTokenB = await MyTokenBContract.deploy(owner.address, owner.address);
-
-    SimpleSwap = await ethers.getContractFactory("SimpleSwap");
-    simpleSwap = await SimpleSwap.deploy(owner.address);
-  });
-
-  describe("addLiquidity", function () {
-    it("should revert with SimpleSwap__ZeroInitialLiquidity if liquidity is too small", async function () {
-      // MyTokenA/B tokens have 18 decimals. MINIMUM_LIQUIDITY is 1e3 (1000 units).
-      // If we send 1 base unit of each token: (1 * 1).sqrt() = 1. Since 1 <= 1000, it should revert.
-      await myTokenA.connect(owner).approve(simpleSwap.target, 1);
-      await myTokenB.connect(owner).approve(simpleSwap.target, 1);
-      await expect(
-        simpleSwap.connect(owner).addLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          1,
-          1,
-          0,
-          0, 
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__ZeroInitialLiquidity"
-      );
-    });
-
-it("should add liquidity correctly when Token B is the limiting factor", async function () {
-
-    const initialA = ethers.parseEther("100");
-    const initialB = ethers.parseEther("200");
-    await myTokenA.approve(simpleSwap.target, ethers.MaxUint256);
-    await myTokenB.approve(simpleSwap.target, ethers.MaxUint256);
-    await simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, initialA, initialB, 0, 0, owner.address, (await time.latest()) + 100);
-
-    const amountADesired = ethers.parseEther("10");
-    const amountBDesired = ethers.parseEther("10"); // <-- Esta es la cantidad limitante.
-
-
-    const expectedAmountA = ethers.parseEther("5"); 
-    const expectedAmountB = amountBDesired;
-
-
-    await expect(
-        simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, amountADesired, amountBDesired, 0, 0, owner.address, (await time.latest()) + 100)
-    ).to.emit(simpleSwap, "LiquidityAdded").withArgs(
-        owner.address,
-        myTokenA.target < myTokenB.target ? myTokenA.target : myTokenB.target,
-        myTokenA.target < myTokenB.target ? myTokenB.target : myTokenA.target,
-        expectedAmountA, 
-        expectedAmountB, 
-        (liquidity) => liquidity > 0
-    );
-});
-
-    it("should add liquidity correctly when Token B is the limiting factor", async function () {
-
-    const initialA = ethers.parseEther("200");
-    const initialB = ethers.parseEther("100");
-    await myTokenA.approve(simpleSwap.target, ethers.MaxUint256);
-    await myTokenB.approve(simpleSwap.target, ethers.MaxUint256); // <-- LÍNEA CORREGIDA
-    await simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, initialA, initialB, 0, 0, owner.address, (await time.latest()) + 100);
-
-    const amountADesired = ethers.parseEther("20");
-    const amountBDesired = ethers.parseEther("5"); 
-
-
-    const expectedAmountA = ethers.parseEther("10"); 
-    const expectedAmountB = amountBDesired;
-
-
-    await expect(
-        simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, amountADesired, amountBDesired, 0, 0, owner.address, (await time.latest()) + 100)
-    ).to.emit(simpleSwap, "LiquidityAdded").withArgs(
-        owner.address,
-        myTokenA.target < myTokenB.target ? myTokenA.target : myTokenB.target,
-        myTokenA.target < myTokenB.target ? myTokenB.target : myTokenA.target,
-        expectedAmountA,
-        expectedAmountB,
-        (liquidity) => liquidity > 0 
-    );
-});
-    
-    it("should revert with SimpleSwap__InsufficientAmountA (in existing pool)", async function () {
-      // Setup initial liquidity (100:100)
-      await myTokenA
-        .connect(owner)
-        .approve(simpleSwap.target, ethers.parseEther("100"));
-      await myTokenB
-        .connect(owner)
-        .approve(simpleSwap.target, ethers.parseEther("100"));
-      await simpleSwap
-        .connect(owner)
-        .addLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          ethers.parseEther("100"),
-          ethers.parseEther("100"),
-          ethers.parseEther("100"),
-          ethers.parseEther("100"),
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        );
-      await expect(
-        simpleSwap.connect(owner).addLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          ethers.parseEther("1"), // amountADesired
-          ethers.parseEther("0.1"), // amountBDesired
-          ethers.parseEther("0.5"), // amountAMin (much larger than the 0.1 we would get)
-          BigInt(0), // amountBMin
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__InsufficientAmountA"
-      );
-    });
-
-    it("should revert with SimpleSwap__InsufficientAmountB (in existing pool)", async function () {
-      // Setup initial liquidity (e.g., 100 MTA and 100 MTB) for a 1:1 ratio
-      await myTokenA
-        .connect(owner)
-        .approve(simpleSwap.target, ethers.parseEther("100"));
-      await myTokenB
-        .connect(owner)
-        .approve(simpleSwap.target, ethers.parseEther("100"));
-      await simpleSwap
-        .connect(owner)
-        .addLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          ethers.parseEther("100"),
-          ethers.parseEther("100"),
-          ethers.parseEther("100"),
-          ethers.parseEther("100"),
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        );
-
-      // Scenario: We want to add a tiny amount of TokenA (0.0001 MTA)
-      // This will require an equally tiny amount of TokenB (0.0001 MTB) due to 1:1 ratio.
-      // But we set amountBMin much higher (0.1 MTB) to trigger InsufficientAmountB.
-      // amountAMin is kept at 0 to avoid triggering InsufficientAmountA by accident.
-      const tinyAmountADesired = ethers.parseEther("0.0001"); // Very small
-      const highAmountBMin = ethers.parseEther("0.1"); // Much larger than 0.0001
-
-      // Approve a small amount to allow the transaction to be attempted
-      await myTokenA
-        .connect(owner)
-        .approve(simpleSwap.target, ethers.parseEther("1"));
-      await myTokenB
-        .connect(owner)
-        .approve(simpleSwap.target, ethers.parseEther("1"));
-
-      await expect(
-        simpleSwap.connect(owner).addLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          tinyAmountADesired, // amountADesired: This will drive amountBOptimal down
-          ethers.parseEther("1"), // amountBDesired: Can be anything, as ADesired is limiting
-          BigInt(0), // amountAMin: Keep at 0 to avoid InsufficientAmountA
-          highAmountBMin, // amountBMin: Should be greater than amountBOptimal
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__InsufficientAmountB"
-      );
-    });
-
-    it("should add initial liquidity correctly and emit a LiquidityAdded event", async function () {
-
-      await myTokenA
-        .connect(owner)
-        .approve(simpleSwap.target, initialLiquidity);
-      await myTokenB
-        .connect(owner)
-        .approve(simpleSwap.target, initialLiquidity);
-
-
-      const minimumLiquidity = await simpleSwap.MINIMUM_LIQUIDITY();
-      const expectedLiquidity = initialLiquidity - minimumLiquidity;
-
-      await expect(
-        simpleSwap
-          .connect(owner)
-          .addLiquidity(
-            myTokenA.target,
-            myTokenB.target,
-            initialLiquidity,
-            initialLiquidity,
-            initialLiquidity,
-            initialLiquidity,
-            owner.address,
-            (await ethers.provider.getBlock("latest")).timestamp + 100
-          )
-      )
-        .to.emit(simpleSwap, "LiquidityAdded")
-        .withArgs(
-
-          owner.address, // 1. sender
-          myTokenA.target, // 2. tokenA
-          myTokenB.target, // 3. tokenB
-          initialLiquidity, // 4. amountA
-          initialLiquidity, // 5. amountB
-          expectedLiquidity // 6. liquidity 
-        );
-    });
-
-    it("should revert if tokens are identical", async function () {
-      await expect(
-        simpleSwap.connect(owner).addLiquidity(
-          myTokenA.target, // tokenA
-          myTokenA.target, // tokenB (identical)
-          initialLiquidity,
-          initialLiquidity,
-          initialLiquidity,
-          initialLiquidity,
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__IdenticalTokens"
-      );
-    });
-  });
-
-  describe("removeLiquidity", function () {
+    // --- Test Setup Hook ---
+    // This function runs before every single `it` block in this `describe` suite.
+    // Its purpose is to reset the state and provide a clean, isolated environment for each test.
     beforeEach(async function () {
+        // 1. Get Signers: Load the test accounts provided by Hardhat.
+        [owner, addr1] = await ethers.getSigners();
 
-      await myTokenA
-        .connect(owner)
-        .approve(simpleSwap.target, initialLiquidity);
-      await myTokenB
-        .connect(owner)
-        .approve(simpleSwap.target, initialLiquidity);
-      await simpleSwap
-        .connect(owner)
-        .addLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          initialLiquidity,
-          initialLiquidity,
-          initialLiquidity,
-          initialLiquidity,
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 1
-        );
+        // 2. Load Contract Factories: Prepare the "blueprints" for deploying our contracts.
+        MyTokenAContract = await ethers.getContractFactory("MyTokenA");
+        MyTokenBContract = await ethers.getContractFactory("MyTokenB");
+        SimpleSwap = await ethers.getContractFactory("SimpleSwap");
+
+        // 3. Deploy Fresh Contracts: Create new instances of the contracts for the upcoming test.
+        // This ensures that the state from a previous test does not affect the current one.
+        myTokenA = await MyTokenAContract.deploy(owner.address, owner.address);
+        myTokenB = await MyTokenBContract.deploy(owner.address, owner.address);
+        simpleSwap = await SimpleSwap.deploy(owner.address);
     });
 
  
+describe("addLiquidity", function () {
+    // =============================================================
+    // SECTION: Revert Scenarios
+    // These tests confirm that the function reverts under invalid conditions.
+    // =============================================================
+    describe("Revert Scenarios", function () {
+        it("should revert if initial liquidity is too small", async function () {
+            // Given: The user has approved a negligible amount of tokens
+            await myTokenA.approve(simpleSwap.target, 1);
+            await myTokenB.approve(simpleSwap.target, 1);
 
-it("should remove liquidity correctly, update balances, and emit a LiquidityRemoved event", async function () {
-    // 1. ESTADO INICIAL
-    const tokenABalance_before = await myTokenA.balanceOf(owner.address);
-    const tokenBBalance_before = await myTokenB.balanceOf(owner.address);
+            // When: They try to add liquidity below the MINIMUM_LIQUIDITY threshold
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, 1, 1, 0, 0, owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__ZeroInitialLiquidity");
+        });
 
-const lpBalance = await simpleSwap.balanceOf(owner.address);
-const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
-const totalSupply = await simpleSwap.totalSupply();
+        it("should revert if tokens are identical", async function () {
+            // When: A user tries to create a pool with the same token for both sides
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenA.target, 1, 1, 0, 0, owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__IdenticalTokens");
+        });
 
-const expectedAmountA = (lpBalance * reserves[0]) / totalSupply;
-const expectedAmountB = (lpBalance * reserves[1]) / totalSupply;
+        it("should revert if the deadline has passed", async function () {
+            // Given: A deadline set in the past
+            const deadline = (await time.latest()) + 100;
+            await time.increase(101); // Time-travel past the deadline
 
-    await expect(
-        simpleSwap.connect(owner).removeLiquidity(
-            myTokenA.target,
-            myTokenB.target,
-            lpBalance,
-            0,
-            0,
-            owner.address,
-            (await time.latest()) + 100
-        )
-    )
-    .to.emit(simpleSwap, "LiquidityRemoved")
-    .withArgs(
-        owner.address,
-        myTokenA.target,
-        myTokenB.target,
-        expectedAmountA,
-        expectedAmountB,
-        lpBalance
-    );
+            // When: A user tries to add liquidity
+            // Then: The transaction must revert due to the checkDeadline modifier
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, 1, 1, 0, 0, owner.address, deadline)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__Expired");
+        });
 
-    // 4. VERIFICACIÓN DEL ESTADO FINAL
-    const lpBalance_after = await simpleSwap.balanceOf(owner.address);    
-    expect(lpBalance_after).to.equal(0);
+        it("should revert on slippage if amountA is less than amountAMin", async function () {
+            // Given: A pool with a 1:2 ratio (100 A : 200 B)
+            await myTokenA.approve(simpleSwap.target, ethers.MaxUint256);
+            await myTokenB.approve(simpleSwap.target, ethers.MaxUint256);
+            await simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, ethers.parseEther("100"), ethers.parseEther("200"), 0, 0, owner.address, (await time.latest()) + 100);
 
-    const tokenABalance_after = await myTokenA.balanceOf(owner.address);
-    const tokenBBalance_after = await myTokenB.balanceOf(owner.address);
+            // When: A user tries to add 10 B, which would require 5 A, but they demand a minimum of 6 A
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, ethers.parseEther("10"), ethers.parseEther("10"), ethers.parseEther("6"), 0, owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InsufficientAmountA");
+        });
 
-    expect(tokenABalance_after).to.be.gt(tokenABalance_before);
-    expect(tokenBBalance_after).to.be.gt(tokenBBalance_before);
+        it("should revert on slippage if amountB is less than amountBMin", async function () {
+            // Given: A pool with a 1:1 ratio
+            await myTokenA.approve(simpleSwap.target, ethers.MaxUint256);
+            await myTokenB.approve(simpleSwap.target, ethers.MaxUint256);
+            await simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, ethers.parseEther("100"), ethers.parseEther("100"), 0, 0, owner.address, (await time.latest()) + 100);
+
+            // When: A user adds 10 A (requiring 10 B), but demands a minimum of 11 B
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, ethers.parseEther("10"), ethers.parseEther("10"), 0, ethers.parseEther("11"), owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InsufficientAmountB");
+        });
+    });
+
+    // =============================================================
+    // SECTION: Logic & Calculation Scenarios
+    // These tests confirm the core logic works as expected.
+    // =============================================================
+    describe("Logic & Calculation Scenarios", function () {
+        it("should mint initial liquidity correctly and emit event", async function () {
+            // Given: Amounts for a new pool and approved tokens
+            const amount = ethers.parseEther("100");
+            await myTokenA.approve(simpleSwap.target, amount);
+            await myTokenB.approve(simpleSwap.target, amount);
+            
+            // Calculation for expected LP tokens, considering the locked MINIMUM_LIQUIDITY
+            const minimumLiquidity = await simpleSwap.MINIMUM_LIQUIDITY();
+            const expectedLiquidity = amount - minimumLiquidity;
+
+            // When: Initial liquidity is added
+            // Then: An event should be emitted with the correct parameters
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, amount, amount, 0, 0, owner.address, (await time.latest()) + 100)
+            ).to.emit(simpleSwap, "LiquidityAdded").withArgs(owner.address, myTokenA.target, myTokenB.target, amount, amount, expectedLiquidity);
+        });
+
+        it("should mint correctly when Token A provides the smaller proportional share", async function () {
+            // Given: An existing pool with a 1:1 ratio
+            await myTokenA.approve(simpleSwap.target, ethers.MaxUint256);
+            await myTokenB.approve(simpleSwap.target, ethers.MaxUint256);
+            await simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, ethers.parseEther("100"), ethers.parseEther("100"), 0, 0, owner.address, (await time.latest()) + 100);
+
+            // When: A user adds liquidity where the proportion of Token A (10%) is less than Token B (20%)
+            // Then: The transaction should succeed, proving the contract correctly chose Token A as the limit
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, ethers.parseEther("10"), ethers.parseEther("20"), 0, 0, owner.address, (await time.latest()) + 100)
+            ).to.emit(simpleSwap, "LiquidityAdded");
+        });
+
+        it("should mint correctly when Token B is the limiting factor", async function () {
+            // Given: An existing pool with a 2:1 ratio (200 A : 100 B)
+            await myTokenA.approve(simpleSwap.target, ethers.MaxUint256);
+            await myTokenB.approve(simpleSwap.target, ethers.MaxUint256);
+            await simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, ethers.parseEther("200"), ethers.parseEther("100"), 0, 0, owner.address, (await time.latest()) + 100);
+
+            // When: A user wants to add 20 A (which requires 10 B) but only provides 5 B
+            const amountADesired = ethers.parseEther("20");
+            const amountBDesired = ethers.parseEther("5"); // <-- The limiting amount
+
+            // Then: The contract should take all 5 B and calculate the proportional amount of A (10)
+            const expectedAmountA = ethers.parseEther("10"); 
+            const expectedAmountB = amountBDesired;
+
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, amountADesired, amountBDesired, 0, 0, owner.address, (await time.latest()) + 100)
+            ).to.emit(simpleSwap, "LiquidityAdded").withArgs(owner.address, myTokenA.target, myTokenB.target, expectedAmountA, expectedAmountB, (liquidity) => liquidity > 0);
+        });
+        
+        it("should revert if calculated liquidity to mint is zero due to tiny amounts", async function () {
+            // Given: A pool with very large reserves
+            const largeAmount = ethers.parseEther("10000");
+            await myTokenA.approve(simpleSwap.target, ethers.MaxUint256);
+            await myTokenB.approve(simpleSwap.target, ethers.MaxUint256);
+            await simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, largeAmount, largeAmount, 0, 0, owner.address, (await time.latest()) + 100);
+
+            // When: A user tries to add a minuscule amount (1 wei)
+            // Then: The calculated liquidity will be 0 due to integer division, and it should revert
+            await expect(
+                simpleSwap.addLiquidity(myTokenA.target, myTokenB.target, 1, 1, 0, 0, owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InsufficientLiquidity");
+        });
+    });
 });
 
-    it("should revert if attempting to remove liquidity with 0 LP tokens", async function () {
-      await expect(
-        simpleSwap.connect(owner).removeLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          0, // 0 LP tokens
-          0,
-          0,
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 1
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__InvalidLiquidity"
-      );
-    });
-
-    it("should revert if returning TokenA amount is less than amountAMin", async function () {
-      // Ensure prior liquidity setup in the beforeEach
-      const lpBalance = await simpleSwap.balanceOf(owner.address);
-      await expect(
-        simpleSwap.connect(owner).removeLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          lpBalance / BigInt(2), // Remove half liquidity
-          ethers.parseEther("1000"), // amountAMin too high for what we'll get
-          0,
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__InsufficientAmountA"
-      );
-    });
-
-    it("should revert if returning TokenB amount is less than amountBMin", async function () {
-      // Setup initial liquidity is handled by the `beforeEach` in this `describe` block.
-      const lpBalance = await simpleSwap.balanceOf(owner.address);
-
-      // We attempt to remove a portion of liquidity, but demand a very high amountBMin.
-      // For example, if you remove half liquidity, you'll get half of the reserves.
-      // If initial reserves were 10, you'll get ~5. If amountBMin is 1000, it should fail.
-      await expect(
-        simpleSwap.connect(owner).removeLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          lpBalance / BigInt(2), // Remove half liquidity
-          0, // amountAMin: 0 to not cause that error
-          ethers.parseEther("1000"), // amountBMin: Much more than what will be obtained from TokenB
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__InsufficientAmountB"
-      );
-    });
-  });
-
-  describe("swapExactTokensForTokens", function () {
-    const swapLiquidityA = ethers.parseEther("100");
-    const swapLiquidityB = ethers.parseEther("100");
-    const swapAmountIn = ethers.parseEther("1"); 
-
+describe("removeLiquidity", function () {
+    // This hook runs before each test in THIS describe block.
+    // It ensures that a liquidity pool exists, so we don't have to create it in every test.
     beforeEach(async function () {
-      await myTokenA.connect(owner).approve(simpleSwap.target, swapLiquidityA);
-      await myTokenB.connect(owner).approve(simpleSwap.target, swapLiquidityB);
-      await simpleSwap
-        .connect(owner)
-        .addLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          swapLiquidityA,
-          swapLiquidityB,
-          swapLiquidityA,
-          swapLiquidityB,
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 1
+        await myTokenA.approve(simpleSwap.target, initialLiquidity);
+        await myTokenB.approve(simpleSwap.target, initialLiquidity);
+        await simpleSwap.addLiquidity(
+            myTokenA.target,
+            myTokenB.target,
+            initialLiquidity,
+            initialLiquidity,
+            0, 0,
+            owner.address,
+            (await time.latest()) + 100
         );
     });
 
+    // =============================================================
+    // SECTION: Happy Path
+    // =============================================================
+    it("should correctly remove liquidity, update balances, and emit a LiquidityRemoved event", async function () {
+        // Given: The state of the user's balances and the pool's reserves
+        const tokenABalance_before = await myTokenA.balanceOf(owner.address);
+        const tokenBBalance_before = await myTokenB.balanceOf(owner.address);
+        const lpBalance = await simpleSwap.balanceOf(owner.address);
+        const totalSupply = await simpleSwap.totalSupply();
+        const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
 
-it("should swap tokens correctly, update balances, and emit a Swapped event", async function () {
-    const initialBalanceB = await myTokenB.balanceOf(owner.address);
-    const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
-    const amountIn = ethers.parseEther("1");
+        // We calculate the expected return amounts by mirroring the contract's own formula.
+        const expectedAmountA = (lpBalance * reserves[0]) / totalSupply;
+        const expectedAmountB = (lpBalance * reserves[1]) / totalSupply;
 
-    const amountOut = await simpleSwap.getAmountOut(amountIn, reserves[0], reserves[1]);
+        // When: The user removes all of their liquidity
+        // Then: The correct event should be emitted with the calculated amounts
+        await expect(
+            simpleSwap.connect(owner).removeLiquidity(
+                myTokenA.target,
+                myTokenB.target,
+                lpBalance,
+                0, 0,
+                owner.address,
+                (await time.latest()) + 100
+            )
+        ).to.emit(simpleSwap, "LiquidityRemoved")
+         .withArgs(owner.address, myTokenA.target, myTokenB.target, expectedAmountA, expectedAmountB, lpBalance);
 
-    await myTokenA.connect(owner).approve(simpleSwap.target, amountIn);
+        // And Then: The user's final balances should be updated correctly
+        const lpBalance_after = await simpleSwap.balanceOf(owner.address);
+        expect(lpBalance_after).to.equal(0);
 
-    await expect(
-        simpleSwap.connect(owner).swapExactTokensForTokens(
-            amountIn,
-            0, // amountOutMin a 0 para simplificar este test
-            [myTokenA.target, myTokenB.target],
+        const tokenABalance_after = await myTokenA.balanceOf(owner.address);
+        const tokenBBalance_after = await myTokenB.balanceOf(owner.address);
+        expect(tokenABalance_after).to.be.gt(tokenABalance_before);
+        expect(tokenBBalance_after).to.be.gt(tokenBBalance_before);
+    });
+
+    // =============================================================
+    // SECTION: Revert Scenarios
+    // =============================================================
+    describe("Revert Scenarios", function () {
+        it("should revert if trying to remove zero liquidity", async function () {
+            // When: A user tries to remove 0 LP tokens
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.connect(owner).removeLiquidity(myTokenA.target, myTokenB.target, 0, 0, 0, owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InvalidLiquidity");
+        });
+
+        it("should revert if trying to remove more liquidity than owned", async function () {
+            // Given: The user's current LP token balance
+            const lpBalance = await simpleSwap.balanceOf(owner.address);
+
+            // When: The user tries to remove more LP tokens than they have
+            const amountToRemove = lpBalance + BigInt(1);
+
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.connect(owner).removeLiquidity(myTokenA.target, myTokenB.target, amountToRemove, 0, 0, owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InvalidLiquidity");
+        });
+
+        it("should revert on slippage if returned amountA is less than amountAMin", async function () {
+            // Given: The user wants to remove half of their liquidity
+            const lpBalance = await simpleSwap.balanceOf(owner.address);
+            const amountToRemove = lpBalance / BigInt(2);
+
+            // When: They set an impossibly high minimum for Token A
+            const highAmountAMin = ethers.parseEther("1000");
+
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.connect(owner).removeLiquidity(myTokenA.target, myTokenB.target, amountToRemove, highAmountAMin, 0, owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InsufficientAmountA");
+        });
+
+        it("should revert on slippage if returned amountB is less than amountBMin", async function () {
+            // Given: The user wants to remove half of their liquidity
+            const lpBalance = await simpleSwap.balanceOf(owner.address);
+            const amountToRemove = lpBalance / BigInt(2);
+
+            // When: They set an impossibly high minimum for Token B
+            const highAmountBMin = ethers.parseEther("1000");
+
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.connect(owner).removeLiquidity(myTokenA.target, myTokenB.target, amountToRemove, 0, highAmountBMin, owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InsufficientAmountB");
+        });
+
+        it("should revert when the deadline has passed", async function () {
+            // Given: A deadline set in the past
+            const lpBalance = await simpleSwap.balanceOf(owner.address);
+            const deadline = (await time.latest()) + 100;
+            await time.increase(101);
+
+            // When: The user tries to remove liquidity
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.connect(owner).removeLiquidity(myTokenA.target, myTokenB.target, lpBalance, 0, 0, owner.address, deadline)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__Expired");
+        });
+    });
+});
+
+ describe("swapExactTokensForTokens", function () {
+    // Constants for this specific suite of tests
+    const SWAP_LIQUIDITY = ethers.parseEther("100");
+    const AMOUNT_TO_SWAP = ethers.parseEther("1");
+
+    // This hook runs before each test in THIS describe block,
+    // ensuring a pool with 100 of each token is ready for swapping.
+    beforeEach(async function () {
+        await myTokenA.approve(simpleSwap.target, SWAP_LIQUIDITY);
+        await myTokenB.approve(simpleSwap.target, SWAP_LIQUIDITY);
+        await simpleSwap.addLiquidity(
+            myTokenA.target,
+            myTokenB.target,
+            SWAP_LIQUIDITY,
+            SWAP_LIQUIDITY,
+            0, 0,
             owner.address,
             (await time.latest()) + 100
-        )
-    ).to.emit(simpleSwap, "Swapped").withArgs(
-        owner.address,      // sender
-        myTokenA.target,    // tokenIn
-        myTokenB.target,    // tokenOut
-        amountIn,           // amountIn
-        amountOut,          // amountOut
-        owner.address       // to
-    );
+        );
+    });
 
-    const finalBalanceB = await myTokenB.balanceOf(owner.address);
-    expect(finalBalanceB).to.be.closeTo(initialBalanceB + amountOut, 1);
+    // =============================================================
+    // SECTION: Happy Path
+    // =============================================================
+    it("should swap tokens correctly, update balances, and emit a Swapped event", async function () {
+        // Given: The user's initial balance and the expected output for the swap
+        const initialBalanceB = await myTokenB.balanceOf(owner.address);
+        const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
+        const expectedAmountOut = await simpleSwap.getAmountOut(AMOUNT_TO_SWAP, reserves[0], reserves[1]);
+        await myTokenA.approve(simpleSwap.target, AMOUNT_TO_SWAP);
+
+        // When: The user performs a swap with a valid deadline
+        // Then: The correct "Swapped" event should be emitted
+        await expect(
+            simpleSwap.swapExactTokensForTokens(
+                AMOUNT_TO_SWAP,
+                0, // No slippage protection for this happy path test
+                [myTokenA.target, myTokenB.target],
+                owner.address,
+                (await time.latest()) + 100
+            )
+        ).to.emit(simpleSwap, "Swapped")
+         .withArgs(owner.address, myTokenA.target, myTokenB.target, AMOUNT_TO_SWAP, expectedAmountOut, owner.address);
+
+        // And Then: The user's final balance of Token B should have increased correctly
+        const finalBalanceB = await myTokenB.balanceOf(owner.address);
+        expect(finalBalanceB).to.be.closeTo(initialBalanceB + expectedAmountOut, 1);
+    });
+    
+    // =============================================================
+    // SECTION: Revert Scenarios
+    // =============================================================
+    describe("Revert Scenarios", function () {
+        it("should revert if the deadline has passed", async function () {
+            // Given: A deadline set in the past
+            await myTokenA.approve(simpleSwap.target, AMOUNT_TO_SWAP);
+            const deadline = (await time.latest()) + 100;
+            await time.increase(101);
+
+            // When: The user tries to swap
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.swapExactTokensForTokens(AMOUNT_TO_SWAP, 0, [myTokenA.target, myTokenB.target], owner.address, deadline)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__Expired");
+        });
+
+        it("should revert if the swap path length is invalid", async function () {
+            // When: A user provides a path with less than 2 tokens
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.swapExactTokensForTokens(AMOUNT_TO_SWAP, 0, [myTokenA.target], owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InvalidPath");
+        });
+
+        it("should revert if output amount is less than the minimum required (slippage)", async function () {
+            // Given: The expected output for a swap
+            const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
+            const expectedAmountOut = await simpleSwap.getAmountOut(AMOUNT_TO_SWAP, reserves[0], reserves[1]);
+            await myTokenA.approve(simpleSwap.target, AMOUNT_TO_SWAP);
+
+            // When: The user requires an amount greater than what the pool can provide
+            const impossibleAmountOutMin = expectedAmountOut + BigInt(1);
+
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.swapExactTokensForTokens(AMOUNT_TO_SWAP, impossibleAmountOutMin, [myTokenA.target, myTokenB.target], owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InsufficientOutputAmount");
+        });
+
+        it("should revert if the input amount is zero", async function () {
+            // When: A user tries to swap 0 tokens
+            // Then: The transaction must revert
+            await expect(
+                simpleSwap.swapExactTokensForTokens(0, 0, [myTokenA.target, myTokenB.target], owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__ZeroInputAmount");
+        });
+
+        it("should revert if the pool has insufficient liquidity", async function () {
+            // Given: A brand new, empty SimpleSwap contract
+            const freshSimpleSwap = await SimpleSwap.deploy(owner.address);
+
+            // When: A user tries to swap on it
+            // Then: The transaction must revert
+            await expect(
+                freshSimpleSwap.swapExactTokensForTokens(AMOUNT_TO_SWAP, 0, [myTokenA.target, myTokenB.target], owner.address, (await time.latest()) + 100)
+            ).to.be.revertedWithCustomError(freshSimpleSwap, "SimpleSwap__InsufficientLiquidity");
+        });
+    });
 });
-    it("should revert if path is not 2 tokens", async function () {
-      await expect(
-        simpleSwap.connect(owner).swapExactTokensForTokens(
-          swapAmountIn,
-          0,
-          [myTokenA.target], // Invalid path: only 1 token
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 1
-        )
-      ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InvalidPath");
-    });
 
-    it("should revert if amountOut is less than amountOutMin", async function () {
-      const reservesA = await myTokenA.balanceOf(simpleSwap.target);
-      const reservesB = await myTokenB.balanceOf(simpleSwap.target);
-      const actualExpectedOut = await simpleSwap.getAmountOut(
-        swapAmountIn,
-        reservesA,
-        reservesB
-      );
-
-      await myTokenA.connect(owner).approve(simpleSwap.target, swapAmountIn);
-
-      await expect(
-        simpleSwap.connect(owner).swapExactTokensForTokens(
-          swapAmountIn,
-          actualExpectedOut + BigInt(1), // Request 1 more than what will actually be obtained
-          [myTokenA.target, myTokenB.target],
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 1
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__InsufficientOutputAmount"
-      );
-    });
-
-    it("should revert if amountIn is zero", async function () {
-      await expect(
-        simpleSwap.connect(owner).swapExactTokensForTokens(
-          0, // amountIn = 0
-          0,
-          [myTokenA.target, myTokenB.target],
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 100
-        )
-      ).to.be.revertedWithCustomError(
-        simpleSwap,
-        "SimpleSwap__ZeroInputAmount"
-      );
-    });
-
-    it("should revert if there is no liquidity in the pool", async function () {
-      const freshSimpleSwap = await SimpleSwap.deploy(owner.address);
-      await expect(
-        freshSimpleSwap
-          .connect(owner)
-          .swapExactTokensForTokens(
-            ethers.parseEther("1"),
-            0,
-            [myTokenA.target, myTokenB.target],
-            owner.address,
-            (await ethers.provider.getBlock("latest")).timestamp + 100
-          )
-      ).to.be.revertedWithCustomError(
-        freshSimpleSwap,
-        "SimpleSwap__InsufficientLiquidity"
-      );
-    });
-  });
-
-  describe("View Functions", function () {
+describe("View Functions", function () {
     const viewLiquidityA = ethers.parseEther("1000");
     const viewLiquidityB = ethers.parseEther("2000"); // 1:2 ratio
 
     beforeEach(async function () {
-      await myTokenA.connect(owner).approve(simpleSwap.target, viewLiquidityA);
-      await myTokenB.connect(owner).approve(simpleSwap.target, viewLiquidityB);
-      await simpleSwap
-        .connect(owner)
-        .addLiquidity(
-          myTokenA.target,
-          myTokenB.target,
-          viewLiquidityA,
-          viewLiquidityB,
-          viewLiquidityA,
-          viewLiquidityB,
-          owner.address,
-          (await ethers.provider.getBlock("latest")).timestamp + 1
-        );
+        // This hook creates a 1:2 pool before each test in this suite.
+        await myTokenA.connect(owner).approve(simpleSwap.target, viewLiquidityA);
+        await myTokenB.connect(owner).approve(simpleSwap.target, viewLiquidityB);
+        await simpleSwap
+            .connect(owner)
+            .addLiquidity(
+                myTokenA.target,
+                myTokenB.target,
+                viewLiquidityA,
+                viewLiquidityB,
+                viewLiquidityA,
+                viewLiquidityB,
+                owner.address,
+                (await ethers.provider.getBlock("latest")).timestamp + 1
+            );
+    });
+
+    it("should revert with SimpleSwap__InsufficientLiquidity if reserveOut is zero", async () => {
+        // Given: An input amount and reserves where the output reserve is zero
+        const amountIn = ethers.parseUnits("1", 18);
+        const reserveIn = ethers.parseUnits("100", 18);
+        const reserveOut = 0n;
+
+        // When: getAmountOut is called
+        // Then: It should revert due to insufficient liquidity
+        await expect(
+            simpleSwap.getAmountOut(amountIn, reserveIn, reserveOut)
+        ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__InsufficientLiquidity");
+    });
+
+    it("should revert from getAmountOut if reserves are zero", async function () {
+        // Given: A brand new, empty contract
+        const freshSimpleSwap = await SimpleSwap.deploy(owner.address);
+        const amountIn = ethers.parseEther("1");
+
+        // When: getAmountOut is called with no reserves
+        // Then: It should revert
+        await expect(
+            freshSimpleSwap.getAmountOut(amountIn, 0, 0)
+        ).to.be.revertedWithCustomError(freshSimpleSwap, "SimpleSwap__InsufficientLiquidity");
+    });
+
+    it("should revert from getAmountOut if input amount is zero", async function () {
+        // Given: An existing pool with reserves
+        const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
+        
+        // When: getAmountOut is called with an input of 0
+        // Then: It should revert
+        await expect(
+            simpleSwap.getAmountOut(0, reserves[0], reserves[1])
+        ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__ZeroInputAmount");
+    });
+
+    // NOTE: This test is redundant with the one above, but preserved to maintain coverage.
+    it("should revert from getAmountOut if reserves are zero", async function () {
+        // Given: A brand new, empty contract
+        const freshSimpleSwap = await SimpleSwap.deploy(owner.address);
+        const amountIn = ethers.parseEther("1");
+
+        // When: getAmountOut is called with no reserves
+        // Then: It should revert
+        await expect(
+            freshSimpleSwap.getAmountOut(amountIn, 0, 0)
+        ).to.be.revertedWithCustomError(freshSimpleSwap, "SimpleSwap__InsufficientLiquidity");
+    });
+
+    it("getPrice should revert if reserves are zero", async function () {
+        // Given: A brand new, empty contract
+        const freshSimpleSwap = await SimpleSwap.deploy(owner.address);
+
+        // When: getPrice is called with no reserves
+        // Then: It should revert
+        await expect(
+            freshSimpleSwap.getPrice(myTokenA.target, myTokenB.target)
+        ).to.be.revertedWithCustomError(freshSimpleSwap, "SimpleSwap__InsufficientLiquidity");
+    });
+
+    // NOTE: This test is redundant, but preserved to maintain coverage.
+    it("getAmountOut should revert if reserves are zero", async function () {
+        // Given: A brand new, empty contract
+        const freshSimpleSwap = await SimpleSwap.deploy(owner.address);
+        const amountIn = ethers.parseEther("1");
+
+        // When: getAmountOut is called with no reserves
+        // Then: It should revert
+        await expect(
+            freshSimpleSwap.getAmountOut(amountIn, 0, 0)
+        ).to.be.revertedWithCustomError(freshSimpleSwap, "SimpleSwap__InsufficientLiquidity");
+    });
+
+    // NOTE: This test is redundant, but preserved to maintain coverage.
+    it("getAmountOut should revert if input amount is zero", async function () {
+        // Given: An existing pool with reserves
+        const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
+
+        // When: getAmountOut is called with an input of 0
+        // Then: It should revert
+        await expect(
+            simpleSwap.getAmountOut(0, reserves[0], reserves[1])
+        ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__ZeroInputAmount");
     });
 
     it("getPrice should return the correct price", async function () {
-      const expectedPrice =
-        (viewLiquidityB * ethers.parseEther("1")) / viewLiquidityA; // B/A * 1e18
-      const price = await simpleSwap.getPrice(myTokenA.target, myTokenB.target);
-      expect(price).to.equal(expectedPrice);
+        // Given: A pool with a 1:2 ratio (1000 A : 2000 B)
+        
+        // When: We ask for the price of A in terms of B
+        // Then: The price should be 2.0 (scaled by 1e18)
+        const expectedPrice = (viewLiquidityB * ethers.parseEther("1")) / viewLiquidityA;
+        const price = await simpleSwap.getPrice(myTokenA.target, myTokenB.target);
+        expect(price).to.equal(expectedPrice);
 
-      const expectedPriceReverse =
-        (viewLiquidityA * ethers.parseEther("1")) / viewLiquidityB; // A/B * 1e18
-      const priceReverse = await simpleSwap.getPrice(
-        myTokenB.target,
-        myTokenA.target
-      );
-      expect(priceReverse).to.equal(expectedPriceReverse);
+        // And When: We ask for the price of B in terms of A
+        // Then: The price should be 0.5 (scaled by 1e18)
+        const expectedPriceReverse = (viewLiquidityA * ethers.parseEther("1")) / viewLiquidityB;
+        const priceReverse = await simpleSwap.getPrice(myTokenB.target, myTokenA.target);
+        expect(priceReverse).to.equal(expectedPriceReverse);
     });
 
     it("getAmountOut should calculate the output amount correctly", async function () {
-      const reservesA = await myTokenA.balanceOf(simpleSwap.target);
-      const reservesB = await myTokenB.balanceOf(simpleSwap.target);
-      const amountInTest = ethers.parseEther("5"); // 5 input tokens
+        // Given: The current reserves and a valid input amount
+        const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
+        const amountInTest = ethers.parseEther("5");
 
-      const expectedAmountOut =
-        (amountInTest * reservesB) / (reservesA + amountInTest);
+        // When: We calculate the expected output using the standard formula
+        const expectedAmountOut = (amountInTest * reserves[1]) / (reserves[0] + amountInTest);
 
-      const calculatedAmountOut = await simpleSwap.getAmountOut(
-        amountInTest,
-        reservesA,
-        reservesB
-      );
-      expect(calculatedAmountOut).to.equal(expectedAmountOut);
+        // Then: The contract's function should return the exact same value
+        const calculatedAmountOut = await simpleSwap.getAmountOut(amountInTest, reserves[0], reserves[1]);
+        expect(calculatedAmountOut).to.equal(expectedAmountOut);
     });
-  });
+});
 
+  describe("Security and Emergency Functions", function () { 
+    // This hook runs before each test in this suite.
+    // It creates a pool funded by `addr1` to test scenarios requiring existing liquidity.
 
-  describe("Security and Emergency Functions", function () {
     beforeEach(async function () {
-
       const liquidityAmount = ethers.parseEther("100");
       await myTokenA.connect(owner).transfer(addr1.address, liquidityAmount);
       await myTokenB.connect(owner).transfer(addr1.address, liquidityAmount);
@@ -589,70 +575,99 @@ it("should swap tokens correctly, update balances, and emit a Swapped event", as
         );
     });
 
-    it("should revert if a non-owner tries to withdraw ETH", async function () {
+    it("should complete successfully when the internal call succeeds", async function () {
+        // NOTE: This test is for the helper contract `MaliciousReceiver`.
+        // Given: A simple response contract that is designed to always succeed when called.
+ 
+      const SuccessResponse = await ethers.getContractFactory(
+        "SuccessResponse"
+      );
+      const successResponse = await SuccessResponse.deploy();
 
-    await expect(
-        simpleSwap.connect(addr1).withdrawETH()
-    ).to.be.revertedWithCustomError(simpleSwap, "OwnableUnauthorizedAccount")
-     .withArgs(addr1.address);
-});
-   
-it("should allow the owner to withdraw accidentally sent ETH", async function () {
+      const MaliciousReceiver = await ethers.getContractFactory(
+        "MaliciousReceiver"
+      );
+      const maliciousReceiver = await MaliciousReceiver.deploy();
 
-    const amountToSend = ethers.parseEther("1.0");
-    await addr1.sendTransaction({
-        to: simpleSwap.target,
-        value: amountToSend,
+      await expect(maliciousReceiver.executeWithdraw(successResponse.target)).to
+        .not.be.reverted;
     });
 
+    it("should revert if a non-owner tries to withdraw ETH", async function () {
+      // When: A non-owner (addr1) calls the owner-only withdrawETH function.
+      // Then: The transaction must revert with the correct Ownable error.
+      await expect(simpleSwap.connect(addr1).withdrawETH())
+        .to.be.revertedWithCustomError(simpleSwap, "OwnableUnauthorizedAccount")
+        .withArgs(addr1.address);
+    });
 
-    expect(await ethers.provider.getBalance(simpleSwap.target)).to.equal(amountToSend);
+    it("should allow the owner to withdraw accidentally sent ETH", async function () {
+      // Given: The contract has an ETH balance from an accidental transfer.
+      const amountToSend = ethers.parseEther("1.0");
+      await addr1.sendTransaction({
+        to: simpleSwap.target,
+        value: amountToSend,
+      });
 
-    const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
+      expect(await ethers.provider.getBalance(simpleSwap.target)).to.equal(
+        amountToSend
+      );
 
+      const ownerBalanceBefore = await ethers.provider.getBalance(
+        owner.address
+      );
+      // When: The owner calls withdrawETH.
+      const tx = await simpleSwap.connect(owner).withdrawETH();
 
-    const tx = await simpleSwap.connect(owner).withdrawETH();
-    
-    expect(await ethers.provider.getBalance(simpleSwap.target)).to.equal(0);
+      // Then: The contract's ETH balance should be zero and the owner's balance should increase accordingly.
+      expect(await ethers.provider.getBalance(simpleSwap.target)).to.equal(0);
 
-    await expect(tx).to.changeEtherBalance(owner, amountToSend);
-});
+      // When: The owner calls withdrawETH.
+      // Then: The transaction must revert with the specific error.
+      await expect(tx).to.changeEtherBalance(owner, amountToSend);
+    });
 
-it("should revert if owner tries to withdraw ETH when balance is zero", async function () {
+    it("should revert if owner tries to withdraw ETH when balance is zero", async function () {
+      // Given: A surplus of Token A is accidentally sent to the contract.
+      expect(await ethers.provider.getBalance(simpleSwap.target)).to.equal(0);
 
-    expect(await ethers.provider.getBalance(simpleSwap.target)).to.equal(0);
-
-
-    await expect(
+      await expect(
         simpleSwap.connect(owner).withdrawETH()
-    ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__NoEthToWithdraw");
-});
-it("should allow the owner to recover surplus ERC20 tokens", async function () {
-    const surplusAmount = ethers.parseEther("10");
+      ).to.be.revertedWithCustomError(
+        simpleSwap,
+        "SimpleSwap__NoEthToWithdraw"
+      );
+    });
+    it("should allow the owner to recover surplus ERC20 tokens", async function () {
+      const surplusAmount = ethers.parseEther("10");
 
-    await myTokenA.connect(owner).transfer(simpleSwap.target, surplusAmount);
+      await myTokenA.connect(owner).transfer(simpleSwap.target, surplusAmount);
 
-    const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
-    const actualBalanceA = await myTokenA.balanceOf(simpleSwap.target);
-    expect(actualBalanceA).to.equal(reserves[0] + surplusAmount);
-
-    const ownerBalanceBefore = await myTokenA.balanceOf(owner.address);
-
-
-    await simpleSwap.connect(owner).recoverERC20(
+      const reserves = await simpleSwap.getReserves(
         myTokenA.target,
-        myTokenB.target,
-        myTokenA.target 
-    );
-    
-    const actualBalanceA_after = await myTokenA.balanceOf(simpleSwap.target);
-    expect(actualBalanceA_after).to.equal(reserves[0]);
+        myTokenB.target
+      );
+      // Then: The contract's final token balance should equal its tracked reserve.
+      const actualBalanceA = await myTokenA.balanceOf(simpleSwap.target);
+      expect(actualBalanceA).to.equal(reserves[0] + surplusAmount);
 
-    const ownerBalanceAfter = await myTokenA.balanceOf(owner.address);
-    expect(ownerBalanceAfter).to.equal(ownerBalanceBefore + surplusAmount);
-});
+      const ownerBalanceBefore = await myTokenA.balanceOf(owner.address);
+
+      await simpleSwap
+        .connect(owner)
+        .recoverERC20(myTokenA.target, myTokenB.target, myTokenA.target);
+
+      const actualBalanceA_after = await myTokenA.balanceOf(simpleSwap.target);
+      expect(actualBalanceA_after).to.equal(reserves[0]);
+
+      const ownerBalanceAfter = await myTokenA.balanceOf(owner.address);
+      expect(ownerBalanceAfter).to.equal(ownerBalanceBefore + surplusAmount);
+    });
 
     it("should revert if a non-owner tries to call recoverERC20", async function () {
+      // Given: The pool is set up by the beforeEach hook.
+      // When: A non-owner (addr1) tries to recover tokens.
+      // Then: The transaction must revert with the correct Ownable error.
       await expect(
         simpleSwap
           .connect(addr1)
@@ -662,7 +677,8 @@ it("should allow the owner to recover surplus ERC20 tokens", async function () {
         .withArgs(addr1.address);
     });
 
-    it("should revert if deadline has passed", async function () {
+    it("should revert if deadline has passed", async function () {    
+      // Given: A deadline.
       const deadline = (await time.latest()) + 100; // Get current block timestamp
 
       await time.increase(101); // Increase time by 101 seconds, past the deadline
@@ -680,8 +696,8 @@ it("should allow the owner to recover surplus ERC20 tokens", async function () {
       ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__Expired");
     });
 
-    it("should revert addLiquidity if tokens are not approved", async function () {
-
+    it("should revert addLiquidity if tokens are not approved", async function () {      
+      // Given: A user (owner) has not approved the contract to spend their tokens.
       await expect(
         simpleSwap
           .connect(owner)
@@ -695,74 +711,76 @@ it("should allow the owner to recover surplus ERC20 tokens", async function () {
             owner.address,
             (await ethers.provider.getBlock("latest")).timestamp + 100
           )
-        // The error comes from the ERC20 contract, not SimpleSwap
       ).to.be.revertedWithCustomError(myTokenA, "ERC20InsufficientAllowance");
     });
 
-it("should allow the owner to recover surplus Token B", async function () {
+    it("should allow the owner to recover surplus Token B", async function () {
+      const surplusAmount = ethers.parseEther("10");
 
-    const surplusAmount = ethers.parseEther("10");
+      await myTokenB.connect(owner).transfer(simpleSwap.target, surplusAmount);
 
+      await simpleSwap
+        .connect(owner)
+        .recoverERC20(myTokenA.target, myTokenB.target, myTokenB.target);
 
-    await myTokenB.connect(owner).transfer(simpleSwap.target, surplusAmount);
-
-
-    await simpleSwap.connect(owner).recoverERC20(
+      const reserves = await simpleSwap.getReserves(
         myTokenA.target,
-        myTokenB.target,
         myTokenB.target
-    );
-
-
-    const reserves = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
-    const finalBalanceB = await myTokenB.balanceOf(simpleSwap.target);
-    expect(finalBalanceB).to.equal(reserves[1]);
-});
-
-it("should revert if trying to recover a token not in the pair", async function () {
-    // Creamos un tercer token completamente diferente.
-    const UnrelatedToken = await ethers.getContractFactory("MyTokenA");
-    const unrelatedToken = await UnrelatedToken.deploy(owner.address, owner.address);
-
-    await expect(
-        simpleSwap.connect(owner).recoverERC20(
-            myTokenA.target,
-            myTokenB.target,
-            unrelatedToken.target
-        )
-    ).to.be.revertedWith("SimpleSwap__TokenNotInPair");
-});
-
-it("should revert if the owner (a contract) fails to receive ETH", async function () {
-
-    const MaliciousReceiver = await ethers.getContractFactory("MaliciousReceiver");
-    const maliciousReceiver = await MaliciousReceiver.deploy();
-
-    const simpleSwap = await SimpleSwap.deploy(owner.address);
-
-
-    await simpleSwap.connect(owner).transferOwnership(maliciousReceiver.target);
-    expect(await simpleSwap.owner()).to.equal(maliciousReceiver.target);
-
-
-    const amountToSend = ethers.parseEther("1.0");
-    await owner.sendTransaction({
-        to: simpleSwap.target,
-        value: amountToSend,
+      );
+      const finalBalanceB = await myTokenB.balanceOf(simpleSwap.target);
+      expect(finalBalanceB).to.equal(reserves[1]);
     });
 
-    await expect(
+    it("should revert if trying to recover a token not in the pair", async function () {
+      const UnrelatedToken = await ethers.getContractFactory("MyTokenA");
+      const unrelatedToken = await UnrelatedToken.deploy(
+        owner.address,
+        owner.address
+      );
+
+      await expect(
+        simpleSwap
+          .connect(owner)
+          .recoverERC20(myTokenA.target, myTokenB.target, unrelatedToken.target)
+      ).to.be.revertedWith("SimpleSwap__TokenNotInPair");
+    });
+
+    it("should revert if the owner (a contract) fails to receive ETH", async function () {
+              // Given: A third, unrelated token contract.
+      const MaliciousReceiver = await ethers.getContractFactory(
+        "MaliciousReceiver"
+      );
+      const maliciousReceiver = await MaliciousReceiver.deploy();
+
+      const simpleSwap = await SimpleSwap.deploy(owner.address);
+
+      await simpleSwap
+        .connect(owner)
+        .transferOwnership(maliciousReceiver.target);
+      expect(await simpleSwap.owner()).to.equal(maliciousReceiver.target);
+
+      const amountToSend = ethers.parseEther("1.0");
+      await owner.sendTransaction({
+        to: simpleSwap.target,
+        value: amountToSend,
+      });
+
+      await expect(
         maliciousReceiver.executeWithdraw(simpleSwap.target)
-    ).to.be.revertedWithCustomError(simpleSwap, "SimpleSwap__EthTransferFailed");
-});
+      ).to.be.revertedWithCustomError(
+        simpleSwap,
+        "SimpleSwap__EthTransferFailed"
+      );
+    });
 
     it("VULNERABILITY: owner should NOT be able to drain pool funds via recoverERC20", async function () {
+      // Given: The pool is set up by the `beforeEach` hook, with no surplus  
+      // When: The owner tries to recover tokens that are part of the pool's official liquidity.
+      // Then: The transaction must revert, preventing the rug pull.
       await expect(
-        simpleSwap.connect(owner).recoverERC20(
-          myTokenA.target,
-          myTokenB.target,
-          myTokenA.target 
-        )
+        simpleSwap
+          .connect(owner)
+          .recoverERC20(myTokenA.target, myTokenB.target, myTokenA.target)
       ).to.be.revertedWithCustomError(
         simpleSwap,
         "SimpleSwap__NoTokensToRecover"
