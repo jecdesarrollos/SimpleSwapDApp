@@ -10,7 +10,7 @@ This document provides a comprehensive overview of the smart contract architectu
 
 ## Live Demo & Project Links
 
-  * **Live Application (Sepolia):** [`https://tp4-frontend.vercel.app/`](https://www.google.com/search?q=%5Bhttps://tp4-frontend.vercel.app/%5D\(https://tp4-frontend.vercel.app/\))
+  * **Live Application (Sepolia):** [`https://simple-swap-d-app.vercel.app//`](https://www.google.com/search?q=%5Bhttps://simple-swap-d-app.vercel.app/%5D\(https://tp4-frontend.vercel.app/\))
   * **Test Coverage Report:** [`https://coverage-report-zeta.vercel.app/`](https://www.google.com/search?q=%5Bhttps://coverage-report-zeta.vercel.app/%5D\(https://coverage-report-zeta.vercel.app/\))
 
 -----
