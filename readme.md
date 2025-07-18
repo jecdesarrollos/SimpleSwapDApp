@@ -21,9 +21,9 @@ The system is composed of a suite of modular smart contracts, prioritizing secur
 
 ### Deployed Contracts (Sepolia Testnet)
 
-  * **`SimpleSwap` (Core AMM):** [`0xc42A20B60255a96a74CbdDdB992E854a006755d5`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xc42A20B60255a96a74CbdDdB992E854a006755d5%5D\(https://sepolia.etherscan.io/address/0xc42A20B60255a96a74CbdDdB992E854a006755d5\))
-  * **`MyTokenA` (MTA):** [`0x8540e176C6Eca07cA883B65e4f3dd2ABC5768E6e`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x8540e176C6Eca07cA883B65e4f3dd2ABC5768E6e%5D\(https://sepolia.etherscan.io/address/0x8540e176C6Eca07cA883B65e4f3dd2ABC5768E6e\))
-  * **`MyTokenB` (MTB):** [`0xE1Ed976E539A335F21F32cb9A47ba0A86aB48669`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xE1Ed976E539A335F21F32cb9A47ba0A86aB48669%5D\(https://sepolia.etherscan.io/address/0xE1Ed976E539A335F21F32cb9A47ba0A86aB48669\))
+  * **`SimpleSwap` (Core AMM):** [`0x10Fa345078dADcd5974997f34769F5A7b3673DE8`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x10Fa345078dADcd5974997f34769F5A7b3673DE8%5D\(https://sepolia.etherscan.io/address/0x10Fa345078dADcd5974997f34769F5A7b3673DE8\))
+  * **`MyTokenA` (MTA):** [`0xc26d26569cC04f81A45e9dEa3688Cf775dC51B9D`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xc26d26569cC04f81A45e9dEa3688Cf775dC51B9D%5D\(https://sepolia.etherscan.io/address/0xc26d26569cC04f81A45e9dEa3688Cf775dC51B9D\))
+  * **`MyTokenB` (MTB):** [`0xdB8C471B3FEdd023959A52EF64aC68214f5b858A`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xdB8C471B3FEdd023959A52EF64aC68214f5b858A%5D\(https://sepolia.etherscan.io/address/0xdB8C471B3FEdd023959A52EF64aC68214f5b858A\))
   * **Project Developer Wallet:** [`0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE%5D\(https://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE\))
 
 ### Contract File Structure
@@ -60,8 +60,8 @@ The project achieves **100% statement, function, and line coverage** on all core
 
 | File | % Stmts | % Branch | % Funcs | % Lines |
 | :--- | :--- | :--- | :--- | :--- |
-| **All files** | **100** | **98.68** | **100** | **100** |
-| `SimpleSwap.sol` | 100 | 98.48 | 100 | 100 |
+| **All files** | **100** | **100** | **100** | **100** |
+| `SimpleSwap.sol` | 100 | 100 | 100 | 100 |
 
 -----
 
