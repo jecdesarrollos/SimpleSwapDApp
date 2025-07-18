@@ -502,9 +502,7 @@ contract SimpleSwap is Ownable, ISimpleSwap, ERC20 {
             liquidity = liquidity - MINIMUM_LIQUIDITY;
         } else {
             // Subsequent liquidity provisions
-            uint256 liquidityA = (amountA * currentTotalSupply) / reserveA;
-            uint256 liquidityB = (amountB * currentTotalSupply) / reserveB;
-            liquidity = liquidityA < liquidityB ? liquidityA : liquidityB;
+            liquidity = reserveB*(amountA * currentTotalSupply) / (reserveA*reserveB);
         }
 
         if (liquidity == 0) revert SimpleSwap__InsufficientLiquidity();
