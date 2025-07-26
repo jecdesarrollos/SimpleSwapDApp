@@ -72,6 +72,31 @@ describe("SimpleSwap - Core Functionality Tests", function () {
         );
       });
 
+    it("should add liquidity correctly when tokens are provided in flipped order (B, A)", async function () {
+    // Given: Amounts for a new pool and approved tokens
+    const amountA = ethers.parseEther("50");
+    const amountB = ethers.parseEther("50");
+    await myTokenA.approve(simpleSwap.target, amountA);
+    await myTokenB.approve(simpleSwap.target, amountB);
+
+    // When: Liquidity is added with Token B as the first argument
+    await simpleSwap.addLiquidity(
+        myTokenB.target, // Flipped order
+        myTokenA.target, // Flipped order
+        amountB,
+        amountA,
+        0,
+        0,
+        owner.address,
+        (await time.latest()) + 100
+    );
+
+    // Then: The reserves should be updated correctly regardless of input order
+    const [reserveA, reserveB] = await simpleSwap.getReserves(myTokenA.target, myTokenB.target);
+    expect(reserveA).to.equal(amountA);
+    expect(reserveB).to.equal(amountB);
+    });
+
       it("should revert if tokens are identical", async function () {
         // When: A user tries to create a pool with the same token for both sides
         // Then: The transaction must revert
@@ -354,9 +379,60 @@ describe("SimpleSwap - Core Functionality Tests", function () {
       );
     });
 
-    // =============================================================
-    // SECTION: Happy Path
-    // =============================================================
+it("should remove liquidity correctly when tokens are provided in flipped order (B, A)", async function () {
+    // Given: The user's current LP balance and initial token balances
+    const lpBalance = await simpleSwap.balanceOf(owner.address);
+    const tokenABalance_before = await myTokenA.balanceOf(owner.address);
+    const tokenBBalance_before = await myTokenB.balanceOf(owner.address);
+
+    // When: The user removes all of their liquidity, calling the function with token B first
+    await simpleSwap.removeLiquidity(
+        myTokenB.target, // Flipped order
+        myTokenA.target, // Flipped order
+        lpBalance,
+        0,
+        0,
+        owner.address,
+        (await time.latest()) + 100
+    );
+
+    // Then: The user's final balances should have increased, proving the transfers were successful
+    const lpBalance_after = await simpleSwap.balanceOf(owner.address);
+    expect(lpBalance_after).to.equal(0);
+
+    const tokenABalance_after = await myTokenA.balanceOf(owner.address);
+    const tokenBBalance_after = await myTokenB.balanceOf(owner.address);
+    expect(tokenABalance_after).to.be.gt(tokenABalance_before);
+    expect(tokenBBalance_after).to.be.gt(tokenBBalance_before);
+});
+
+it("should remove liquidity correctly when tokens are provided in flipped order (B, A)", async function () {
+        // Given: The user's current LP balance and initial token balances
+        const lpBalance = await simpleSwap.balanceOf(owner.address);
+        const tokenABalance_before = await myTokenA.balanceOf(owner.address);
+        const tokenBBalance_before = await myTokenB.balanceOf(owner.address);
+
+        // When: The user removes all of their liquidity, calling the function with token B first
+        await simpleSwap.removeLiquidity(
+            myTokenB.target, // Flipped order
+            myTokenA.target, // Flipped order
+            lpBalance,
+            0,
+            0,
+            owner.address,
+            (await time.latest()) + 100
+        );
+
+        // Then: The user's final balances should have increased, proving the transfers were successful
+        const lpBalance_after = await simpleSwap.balanceOf(owner.address);
+        expect(lpBalance_after).to.equal(0);
+
+        const tokenABalance_after = await myTokenA.balanceOf(owner.address);
+        const tokenBBalance_after = await myTokenB.balanceOf(owner.address);
+        expect(tokenABalance_after).to.be.gt(tokenABalance_before);
+        expect(tokenBBalance_after).to.be.gt(tokenBBalance_before);
+    });
+
     it("should correctly remove liquidity, update balances, and emit a LiquidityRemoved event", async function () {
       // Given: The state of the user's balances and the pool's reserves
       const tokenABalance_before = await myTokenA.balanceOf(owner.address);
@@ -559,9 +635,56 @@ describe("SimpleSwap - Core Functionality Tests", function () {
       );
     });
 
-    // =============================================================
-    // SECTION: Happy Path
-    // =============================================================
+    it("should swap tokens correctly when the input token has a higher address (B -> A)", async function () {
+    // Given: The user wants to swap Token B for Token A
+    const amountToSwapB = ethers.parseEther("1");
+    await myTokenB.approve(simpleSwap.target, amountToSwapB);
+    const initialBalanceA = await myTokenA.balanceOf(owner.address);
+
+    // Calculate expected output
+    const reserves = await simpleSwap.getReserves(myTokenB.target, myTokenA.target);
+    const expectedAmountOut = await simpleSwap.getAmountOut(amountToSwapB, reserves[0], reserves[1]);
+
+    // When: The user performs the swap from B to A
+    await simpleSwap.swapExactTokensForTokens(
+        amountToSwapB,
+        0,
+        [myTokenB.target, myTokenA.target], // Flipped path
+        owner.address,
+        (await time.latest()) + 100
+    );
+
+    // Then: The user's balance of Token A should increase
+    const finalBalanceA = await myTokenA.balanceOf(owner.address);
+    expect(finalBalanceA).to.be.closeTo(initialBalanceA + expectedAmountOut, 1);
+   });
+
+    it("should swap tokens correctly when the input token has a higher address (B -> A)", async function () {
+        // Given: The user wants to swap Token B for Token A
+        const amountToSwapB = ethers.parseEther("1");
+        await myTokenB.approve(simpleSwap.target, amountToSwapB);
+        const initialBalanceA = await myTokenA.balanceOf(owner.address);
+
+        // Calculate expected output
+        const reserves = await simpleSwap.getReserves(myTokenB.target, myTokenA.target);
+        const expectedAmountOut = await simpleSwap.getAmountOut(amountToSwapB, reserves[0], reserves[1]);
+
+        // When: The user performs the swap from B to A
+        await expect(
+            simpleSwap.swapExactTokensForTokens(
+                amountToSwapB,
+                0,
+                [myTokenB.target, myTokenA.target], // Note the flipped order in the path
+                owner.address,
+                (await time.latest()) + 100
+            )
+        ).to.emit(simpleSwap, "Swapped");
+
+        // Then: The user's balance of Token A should increase
+        const finalBalanceA = await myTokenA.balanceOf(owner.address);
+        expect(finalBalanceA).to.be.closeTo(initialBalanceA + expectedAmountOut, 1);
+    });
+
     it("should swap tokens correctly, update balances, and emit a Swapped event", async function () {
       // Given: The user's initial balance and the expected output for the swap
       const initialBalanceB = await myTokenB.balanceOf(owner.address);

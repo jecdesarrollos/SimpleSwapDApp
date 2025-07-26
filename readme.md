@@ -21,9 +21,9 @@ The system is composed of a suite of modular smart contracts, prioritizing secur
 
 ### Deployed Contracts (Sepolia Testnet)
 
-  * **`SimpleSwap` (Core AMM):** [`0x10Fa345078dADcd5974997f34769F5A7b3673DE8`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x10Fa345078dADcd5974997f34769F5A7b3673DE8%5D\(https://sepolia.etherscan.io/address/0x10Fa345078dADcd5974997f34769F5A7b3673DE8\))
-  * **`MyTokenA` (MTA):** [`0xc26d26569cC04f81A45e9dEa3688Cf775dC51B9D`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xc26d26569cC04f81A45e9dEa3688Cf775dC51B9D%5D\(https://sepolia.etherscan.io/address/0xc26d26569cC04f81A45e9dEa3688Cf775dC51B9D\))
-  * **`MyTokenB` (MTB):** [`0xdB8C471B3FEdd023959A52EF64aC68214f5b858A`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xdB8C471B3FEdd023959A52EF64aC68214f5b858A%5D\(https://sepolia.etherscan.io/address/0xdB8C471B3FEdd023959A52EF64aC68214f5b858A\))
+  * **`SimpleSwap` (Core AMM):** [`0x561691a08E935FFAd44A7c284190a57bAfAf96b1`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x561691a08E935FFAd44A7c284190a57bAfAf96b1%5D\(https://sepolia.etherscan.io/address/0x561691a08E935FFAd44A7c284190a57bAfAf96b1\))
+  * **`MyTokenA` (MTA):** [`0xD1C9c108652F2672790dA776Ee81a6BBCbcf1268`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xD1C9c108652F2672790dA776Ee81a6BBCbcf1268%5D\(https://sepolia.etherscan.io/address/0xD1C9c108652F2672790dA776Ee81a6BBCbcf1268\))
+  * **`MyTokenB` (MTB):** [`0x3EE08CAe045a0de6b5F2Ea8997836d580B1f365e`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x3EE08CAe045a0de6b5F2Ea8997836d580B1f365e%5D\(https://sepolia.etherscan.io/address/0x3EE08CAe045a0de6b5F2Ea8997836d580B1f365e\))
   * **Project Developer Wallet:** [`0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE%5D\(https://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE\))
 
 ### Contract File Structure
@@ -104,6 +104,5 @@ This project uses **Hardhat Ignition** for robust and declarative deployments.
 npx hardhat node
 
 # In a second terminal, deploy the contracts
-# (Replace 'Deploy.js' with the actual name of your module file)
-npx hardhat ignition deploy ignition/modules/Deploy.js --network localhost
+npx hardhat ignition deploy ignition/modules/DeployModule.js --network localhost
 ```

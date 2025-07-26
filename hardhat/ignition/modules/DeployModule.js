@@ -18,3 +18,4 @@ module.exports = buildModule("SimpleSwapModule", (m) => {
   // 4. Devuelve los contratos desplegados.
   return { tokenA, tokenB, simpleSwap };
 });
+
