@@ -10,8 +10,8 @@ This document provides a comprehensive overview of the smart contract architectu
 
 ## Live Demo & Project Links
 
-  * **Live Application (Sepolia):** [`https://simple-swap-d-app.vercel.app//`](https://www.google.com/search?q=%5Bhttps://simple-swap-d-app.vercel.app/%5D\(https://tp4-frontend.vercel.app/\))
-  * **Test Coverage Report:** [`https://coverage-report-zeta.vercel.app/`](https://www.google.com/search?q=%5Bhttps://coverage-report-zeta.vercel.app/%5D\(https://coverage-report-zeta.vercel.app/\))
+* **Live Application (Sepolia):** [https://simple-swap-d-app.vercel.app/](https://simple-swap-d-app.vercel.app/)
+* **Test Coverage Report:** [https://coverage-report-zeta.vercel.app/](https://coverage-report-zeta.vercel.app/)
 
 -----
 
@@ -21,10 +21,10 @@ The system is composed of a suite of modular smart contracts, prioritizing secur
 
 ### Deployed Contracts (Sepolia Testnet)
 
-  * **`SimpleSwap` (Core AMM):** [`0x561691a08E935FFAd44A7c284190a57bAfAf96b1`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x561691a08E935FFAd44A7c284190a57bAfAf96b1%5D\(https://sepolia.etherscan.io/address/0x561691a08E935FFAd44A7c284190a57bAfAf96b1\))
-  * **`MyTokenA` (MTA):** [`0xD1C9c108652F2672790dA776Ee81a6BBCbcf1268`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0xD1C9c108652F2672790dA776Ee81a6BBCbcf1268%5D\(https://sepolia.etherscan.io/address/0xD1C9c108652F2672790dA776Ee81a6BBCbcf1268\))
-  * **`MyTokenB` (MTB):** [`0x3EE08CAe045a0de6b5F2Ea8997836d580B1f365e`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x3EE08CAe045a0de6b5F2Ea8997836d580B1f365e%5D\(https://sepolia.etherscan.io/address/0x3EE08CAe045a0de6b5F2Ea8997836d580B1f365e\))
-  * **Project Developer Wallet:** [`0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE`](https://www.google.com/search?q=%5Bhttps://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE%5D\(https://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE\))
+* **`SimpleSwap` (Core AMM):** [`0x561691a08E935FFAd44A7c284190a57bAfAf96b1`](https://sepolia.etherscan.io/address/0x561691a08E935FFAd44A7c284190a57bAfAf96b1)
+* **`MyTokenA` (MTA):** [`0xD1C9c108652F2672790dA776Ee81a6BBCbcf1268`](https://sepolia.etherscan.io/address/0xD1C9c108652F2672790dA776Ee81a6BBCbcf1268)
+* **`MyTokenB` (MTB):** [`0x3EE08CAe045a0de6b5F2Ea8997836d580B1f365e`](https://sepolia.etherscan.io/address/0x3EE08CAe045a0de6b5F2Ea8997836d580B1f365e)
+* **Project Developer Wallet:** [`0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE`](https://sepolia.etherscan.io/address/0x60b1D95b9DF21e19DdAf88Ef11B74Bc534C0a5CE)
 
 ### Contract File Structure
 
